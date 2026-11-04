@@ -1,4 +1,6 @@
-"""Draws the ZYNQ-FORTH32 icon: an FPGA chip with pins, "32" in orange, "FORTH" above it."""
+"""Draws the ZYNQ-DualCore-FORTH32 icon: an FPGA chip with pins, "2x32" in orange, "FORTH"
+above it (the single-core ZYNQ-FORTH32 icon had "32").
+    python make_icon.py ZYNQ-DUAL-FORTH32.ico"""
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -47,7 +49,7 @@ def centered(text, f, y, fill):
 
 
 centered('FORTH', font(150), 300, text_dim)
-centered('32', font(380), 470, text_main)
+centered('2x32', font(250), 520, text_main)
 
 sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)]
 img.save(out, sizes=sizes)

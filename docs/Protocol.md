@@ -9,7 +9,7 @@ carries two things at once:
 
 - **Forth's terminal**, as plain bytes in both directions. A terminal program such as PuTTY
   or Tera Term talks to Forth directly: type a line, press Enter (CR), and Forth answers.
-- **Service requests** from the ZYNQ-FPGA-FORTH32 app (or your own program): version, status,
+- **Service requests** from the ZYNQ-DualCore-FORTH32 app (or your own program): version, status,
   the dictionary, the data and float stacks, the board's I/O state and the source saved in flash. They are
   set apart by the byte SOH (0x01), which Forth never needs.
 
@@ -30,8 +30,8 @@ MCNF; the board switches by itself (see "HASE mode" at the end).
 At every start the ARM prints a line before Forth's banner:
 
 ```
-[zynq-forth32] 3.0, kernel 5007 words loaded and verified
-[zynq-forth32] autostart: 195 bytes of saved source
+[zynq-dual-forth32] 4.0, core 0, kernel 6219 words loaded and verified
+[zynq-dual-forth32] autostart: 195 bytes of saved source
 ```
 
 ## Requests and answers
@@ -71,7 +71,7 @@ Text payloads are lines ending in LF. Numbers are decimal unless they are shown 
 | Request | Payload of the `ok` answer | Refusals |
 |---|---|---|
 | `echo <word>` | the word | – |
-| `version` | `firmware zynq-forth32 3.0`, `protocol 2`, `kernel <cells> <checksum hex>` (the kernel image's size in 32-bit cells and the low 16 bits of the sum of its cells), `cell 32`, `float 32` | – |
+| `version` | `firmware zynq-dual-forth32 4.0`, `protocol 3` (single-core firmware: `zynq-forth32 3.x`, `protocol 2`), `kernel <cells> <checksum hex>` (the kernel image's size in 32-bit cells and the low 16 bits of the sum of its cells), `cell 32`, `float 32` | – |
 | `status` | see below | – |
 | `restart` | empty; reloads and verifies the kernel and starts Forth, which then prints its banner and runs the saved source if autostart is on | `verify`: the image read back wrong, the CPU stays in reset |
 | `restart skip` | the same without the saved source | `verify` |

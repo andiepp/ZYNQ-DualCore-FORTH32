@@ -1,6 +1,6 @@
-# ZYNQ-FPGA-FORTH32 — Implementation Details
+# ZYNQ-DualCore-FORTH32 — Implementation Details
 
-This document describes how ZYNQ-FPGA-FORTH32 is built: the HF32 CPU and its
+This document describes how ZYNQ-DualCore-FORTH32 is built: the HF32 CPU and its
 floating-point unit in the FPGA, the memory and the peripherals around it, the program on the
 ARM core, the Forth kernel that runs on HF32, and the tools that build and check all of it.
 It is written for someone who wants to understand, change or extend the design. How to *use*
@@ -12,7 +12,7 @@ version, `docs/Implementation-Details.pdf`, is generated from this file by `pyth
 
 ## 1 Overview
 
-ZYNQ-FPGA-FORTH32 turns a Digilent Arty Z7-20 into an interactive Forth computer. The Forth
+ZYNQ-DualCore-FORTH32 turns a Digilent Arty Z7-20 into an interactive Forth computer. The Forth
 does not run on the board's ARM processor: it runs on **HF32**, a 32-bit stack processor
 built in the programmable logic of the Zynq, whose instructions are Forth primitives. Everything
 that makes Forth Forth runs on HF32: reading the input line, looking words up, compiling new
@@ -1577,9 +1577,11 @@ boot image, so either can be flashed over the other; each keeps its own saved so
 
 ## 10 The Windows app
 
-`app/` holds the ZYNQ-FPGA-FORTH32 app, a C#/WPF program for .NET 10, published as one
-self-contained `ZynqForth32.exe`. It is the 16-bit app widened to 32-bit cells and the float
-stack, with settings kept apart in `%LocalAppData%\ZYNQ-FPGA-FORTH32`.
+`app/` holds the ZYNQ-DualCore-FORTH32 app, a C#/WPF program for .NET 10, published as one
+self-contained `ZynqDualForth32.exe`. It is the single-core app with a core switch: terminal,
+editor, stacks, dictionary and saved source per core, the board view and the pattern editor
+shared; it talks protocol 3 and still serves a single-core board. Settings are kept apart in
+`%LocalAppData%\ZYNQ-DualCore-FORTH32`.
 
 | Part | Content |
 |---|---|

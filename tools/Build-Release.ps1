@@ -1,33 +1,34 @@
 <#
 .SYNOPSIS
-    Builds a ZYNQ-FPGA-FORTH32 release: the Windows app, the board's boot image and the
+    Builds a ZYNQ-DualCore-FORTH32 release: the Windows app, the board's boot image and the
     documentation, zipped for a GitHub release.
 
 .DESCRIPTION
     Expects the boot image to be built already (hw/build_hw.tcl, sw/build_sw.tcl,
     sw/build_boot.ps1: build\boot\BOOT.bin and the FSBL).
-    1. Runs the app's tests and publishes the app as one self-contained ZynqForth32.exe for
-       Windows x64 (no .NET installation needed).
-    2. Builds the manual's and the design document's PDFs (needs Python with 'markdown' and
+    1. Builds the manual's and the design document's PDFs (needs Python with 'markdown' and
        Microsoft Edge; skipped with -SkipPdf, then the committed docs\Manual.pdf and
-       docs\Implementation-Details.pdf are used).
+       docs\Implementation-Details.pdf are used). This comes first, because the app embeds
+       docs\Manual.pdf when it is built.
+    2. Runs the app's tests and publishes the app as one self-contained ZynqDualForth32.exe for
+       Windows x64 (no .NET installation needed).
     3. Writes to dist\:
-         ZYNQ-FPGA-FORTH32-<version>-windows-x64.zip   app, firmware, flash script, documents, examples
-         ZYNQ-FPGA-FORTH32-firmware-<version>.zip      BOOT.bin, fsbl.elf and the flash script
+         ZYNQ-DualCore-FORTH32-<version>-windows-x64.zip   app, firmware, flash script, documents, examples
+         ZYNQ-DualCore-FORTH32-firmware-<version>.zip      BOOT.bin, fsbl.elf and the flash script
 
 .EXAMPLE
     .\tools\Build-Release.ps1
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0',
+    [string]$Version = '4.0',
     [switch]$SkipTests,
     [switch]$SkipPdf
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $dist = Join-Path $root 'dist'
-$stage = Join-Path $dist "ZYNQ-FPGA-FORTH32-$Version"
+$stage = Join-Path $dist "ZYNQ-DualCore-FORTH32-$Version"
 $firmware = Join-Path $stage 'firmware'
 
 $boot = Join-Path $root 'build\boot\BOOT.bin'
@@ -39,6 +40,14 @@ foreach ($f in $boot, $fsbl) {
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 New-Item -ItemType Directory -Force $firmware | Out-Null
 
+# the PDFs first: the app embeds docs\Manual.pdf when it is built
+if (-not $SkipPdf) {
+    python (Join-Path $root 'tools\manual_pdf.py')
+    if ($LASTEXITCODE) { throw 'manual PDF failed' }
+    python (Join-Path $root 'tools\manual_pdf.py') design
+    if ($LASTEXITCODE) { throw 'design PDF failed' }
+}
+
 $solution = Join-Path $root 'app\ZynqForth.slnx'
 if (-not $SkipTests) {
     dotnet test $solution -c Release
@@ -47,14 +56,7 @@ if (-not $SkipTests) {
 dotnet publish (Join-Path $root 'app\src\ZynqForth\ZynqForth.csproj') -c Release -r win-x64 --self-contained `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version="$Version.0" -o (Join-Path $dist 'publish')
 if ($LASTEXITCODE) { throw 'publish failed' }
-Copy-Item (Join-Path $dist 'publish\ZynqForth32.exe') $stage
-
-if (-not $SkipPdf) {
-    python (Join-Path $root 'tools\manual_pdf.py')
-    if ($LASTEXITCODE) { throw 'manual PDF failed' }
-    python (Join-Path $root 'tools\manual_pdf.py') design
-    if ($LASTEXITCODE) { throw 'design PDF failed' }
-}
+Copy-Item (Join-Path $dist 'publish\ZynqDualForth32.exe') $stage
 
 Copy-Item $boot, $fsbl, (Join-Path $root 'sw\program_flash.ps1') $firmware
 Copy-Item (Join-Path $root 'docs\Manual.pdf'), (Join-Path $root 'docs\Implementation-Details.pdf'), (Join-Path $root 'docs\Protocol.md'), (Join-Path $root 'README.md'),
@@ -62,8 +64,8 @@ Copy-Item (Join-Path $root 'docs\Manual.pdf'), (Join-Path $root 'docs\Implementa
 Copy-Item -Recurse (Join-Path $root 'examples') $stage
 Copy-Item (Join-Path $root 'tools\zforth.py') $stage
 
-$appZip = Join-Path $dist "ZYNQ-FPGA-FORTH32-$Version-windows-x64.zip"
-$fwZip = Join-Path $dist "ZYNQ-FPGA-FORTH32-firmware-$Version.zip"
+$appZip = Join-Path $dist "ZYNQ-DualCore-FORTH32-$Version-windows-x64.zip"
+$fwZip = Join-Path $dist "ZYNQ-DualCore-FORTH32-firmware-$Version.zip"
 Remove-Item -Force $appZip, $fwZip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $appZip
 Compress-Archive -Path (Join-Path $firmware '*') -DestinationPath $fwZip

@@ -25,7 +25,7 @@ divider** and a **second HF32 core**. The version line is 4.x.
 | 3 | Second HF32 + its own unit and RAM in `forth_system`; per-core I/O decode, mailboxes, shared RAM window, pin ownership per core | |
 | 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | done 2026-11-04 (on the board over JTAG; not flashed) |
 | 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | done 2026-11-04 (on the board over JTAG) |
-| 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | |
+| 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | released 2026-11-04 (v4.0); flashing on the owner's go |
 | later | HASE: the node shows core 0 as today; core 1 in the HASE panel needs its own HASE-Lab ADR | |
 
 ## Step 2: hardware divider (done)
@@ -127,6 +127,23 @@ PWM on core 0 and DDS on core 1 at once (100 and 994 rising edges in 100 ms), co
 core 0's PWM channel, a restart of core 0 left core 1's DDS running and released core 0's
 PWM, a restart of core 1 stopped and released its DDS. The counter without the lock also
 counted to 2000 on the board (the race window is a few clocks); the manual says it may.
+
+## Step 6: release 4.0
+
+- **Names:** the release and install scripts, the README, the manual, the design document,
+  the protocol and the PDF tool say ZYNQ-DualCore-FORTH32 / `ZynqDualForth32.exe`; the
+  shortcut is ZYNQ-DualCore-FORTH32 with its own icon (`app/tools/ZYNQ-DUAL-FORTH32.ico`,
+  "2x32"), next to the single-core ZYNQ-FORTH32. Screenshots retaken with the 4.0 app on
+  the board.
+- **HASE node** with firmware 4.0 (core 0), checked over MCNF: node type AE.07.30.80,
+  firmware 4.0, input and output, status, the 16- and 32-bit and float stacks, the
+  dictionary (430 words) and the pin functions; core 1 kept running meanwhile. Not checked:
+  the HASE-Lab panel itself with 4.0 (it reads the version to decide what to show).
+- **Board against the simulator**, line by line on each core after a restart of that core:
+  `smoke`, `divide`, `float` and `manual_checks` give the same transcript on core 0 and on
+  core 1 (the divider's first test on the board).
+- **Release files** (`tools/Build-Release.ps1 -Version 4.0`): the app zip and the firmware
+  zip; the script now builds the PDFs before the app, which embeds the manual.
 
 ## Step 3 onwards: notes
 

@@ -45,7 +45,7 @@ CSS = """
 @page {
   size: A4;
   margin: 18mm 16mm 18mm 16mm;
-  @bottom-left  { content: "ZYNQ-FPGA-FORTH32 \\2014  @LABEL@"; font: 8pt 'Segoe UI', sans-serif; color: #777; }
+  @bottom-left  { content: "ZYNQ-DualCore-FORTH32 \\2014  @LABEL@"; font: 8pt 'Segoe UI', sans-serif; color: #777; }
   @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt 'Segoe UI', sans-serif; color: #777; }
 }
 @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
@@ -115,13 +115,13 @@ def build_html(md_text, doc):
                   lambda m: f'src="{pathlib.Path(HERE, "docs", m.group(1)).resolve().as_uri()}"', body)
     cover = f"""
 <div class="cover">
-  <h1>ZYNQ-FPGA-FORTH32</h1>
+  <h1>ZYNQ-DualCore-FORTH32</h1>
   <div class="sub">{doc['sub']}</div>
-  <div class="meta">ZYNQ-FPGA-FORTH32 {release_version()}<br>Generated {today} from docs/{doc['src']}</div>
+  <div class="meta">ZYNQ-DualCore-FORTH32 {release_version()}<br>Generated {today} from docs/{doc['src']}</div>
 </div>"""
     css = CSS.replace('@LABEL@', doc['label'])
     return (f'<!doctype html><html><head><meta charset="utf-8">'
-            f'<title>ZYNQ-FPGA-FORTH32 {doc["label"]}</title><style>{css}</style></head>'
+            f'<title>ZYNQ-DualCore-FORTH32 {doc["label"]}</title><style>{css}</style></head>'
             f'<body>{cover}{body}</body></html>')
 
 

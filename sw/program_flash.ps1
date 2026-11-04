@@ -31,7 +31,7 @@ if (-not $Vitis) {
 $tool = Join-Path $Vitis 'program_flash.bat'
 if (-not (Test-Path $tool)) { throw "missing $tool, pass -Vitis <folder with program_flash.bat>" }
 
-# S25FL128S, one chip in quad mode; the image starts at 0, the saved Forth source sits at 0xFF0000
+# S25FL128S, one chip in quad mode; the image starts at 0, the saved Forth sources sit at 0xFE0000 (core 0) and 0xFD0000 (core 1)
 # program_flash exits 0 even when it fails, so its output is checked as well
 $lines = & $tool -f $Image -offset 0 -flash_type qspi-x4-single -fsbl $Fsbl -verify 2>&1 |
     ForEach-Object { "$_" }

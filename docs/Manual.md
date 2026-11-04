@@ -1,15 +1,18 @@
-# ZYNQ-FPGA-FORTH32 — User Manual
+# ZYNQ-DualCore-FORTH32 — User Manual
 
-ZYNQ-FPGA-FORTH32 is a small interactive Forth system for the Digilent Arty Z7-20. Its CPU,
-the **HF32**, is a 32-bit stack machine built in the FPGA fabric (PL), with a hardware
-floating-point unit for IEEE single precision and a float stack of its own. Every HF32
-instruction is a Forth primitive. The Zynq's ARM core loads the Forth kernel into the HF32's
-memory and then carries Forth's terminal over the board's USB serial port, where the
-**ZYNQ-FPGA-FORTH32 app** or any terminal program talks to it.
+ZYNQ-DualCore-FORTH32 is a small interactive Forth system for the Digilent Arty Z7-20. Its
+CPUs, two **HF32** cores, are 32-bit stack machines built in the FPGA fabric (PL), each with
+a hardware divider, a floating-point unit for IEEE single precision and a float stack of its
+own. Every HF32 instruction is a Forth primitive. The Zynq's ARM core loads the Forth kernel
+into each core's memory and then carries both Forths' terminals over the board's USB serial
+port, where the **ZYNQ-DualCore-FORTH32 app** or any terminal program talks to them (a
+terminal program sees core 0).
 
-It is the 32-bit generation of ZYNQ-FORTH (16-bit, HF16). The board I/O, the app and the
-names and stack effects of the words are the same, so sources written for ZYNQ-FORTH run
-here; cells, addresses and the CPU are new, and so is floating point (section 5.15).
+It continues ZYNQ-FPGA-FORTH32 3.1, the single-core 32-bit system, which in turn is the
+32-bit generation of ZYNQ-FORTH (16-bit, HF16). The board I/O, the app and the names and
+stack effects of the words are the same, so sources written for either run on each core
+here; new since the 16-bit system are the cells, addresses and the CPU, floating point
+(section 5.15), and with 4.0 the second core and the hardware divider.
 
 **Two cores.** ZYNQ-DualCore-FORTH32 4.0 has two HF32 cores, each running a Forth of its own:
 own memory, dictionary, stacks, terminal and saved source. They share the board's I/O and
@@ -28,7 +31,7 @@ in the kernel. For the instruction encoding and the register maps, see
 Contents:
 
 1. [Getting started](#1-getting-started)
-2. [The ZYNQ-FPGA-FORTH32 app](#2-the-zynq-fpga-forth32-app)
+2. [The ZYNQ-DualCore-FORTH32 app](#2-the-zynq-dualcore-forth32-app)
 3. [Working with the interpreter](#3-working-with-the-interpreter)
 4. [How the implementation works](#4-how-the-implementation-works)
 5. [Word reference](#5-word-reference)
@@ -45,16 +48,16 @@ Contents:
 
 - A Digilent **Arty Z7-20** (the -10 has a smaller FPGA and is not supported) and a micro-USB
   cable to the port marked PROG/UART (J14).
-- On Windows, the **ZYNQ-FPGA-FORTH32 app**. Any other system can use a terminal program.
-- To write ZYNQ-FPGA-FORTH32 into the board's flash: the AMD/Xilinx **Vitis** or **Vivado
+- On Windows, the **ZYNQ-DualCore-FORTH32 app**. Any other system can use a terminal program.
+- To write ZYNQ-DualCore-FORTH32 into the board's flash: the AMD/Xilinx **Vitis** or **Vivado
   Lab** tools (for `program_flash`), once.
 
-### Put ZYNQ-FPGA-FORTH32 on the board
+### Put ZYNQ-DualCore-FORTH32 on the board
 
-Paths in this manual are relative to the **ZYNQ-FPGA-FORTH32 folder**: the repository, or
+Paths in this manual are relative to the **ZYNQ-DualCore-FORTH32 folder**: the repository, or
 the folder of an unpacked release. Commands run in that folder.
 
-The board starts ZYNQ-FPGA-FORTH32 from its QSPI flash when jumper **JP4** is on **QSPI**.
+The board starts ZYNQ-DualCore-FORTH32 from its QSPI flash when jumper **JP4** is on **QSPI**.
 To write the flash once:
 
 1. Set JP4 to **JTAG** and switch the board on.
@@ -68,7 +71,7 @@ The script needs `program_flash` from AMD/Xilinx Vitis 2023.2 (or Vivado Lab). I
 Vitis by `XILINX_VITIS` or in `\Xilinx\Vitis\2023.2` on any drive; installed elsewhere,
 pass its `bin` folder: `.\firmware\program_flash.ps1 -Vitis <Vitis folder>\bin`.
 
-LD0 lights up when Forth runs. The flash keeps ZYNQ-FPGA-FORTH32 until something else is
+LD0 lights up when Forth runs. The flash keeps ZYNQ-DualCore-FORTH32 until something else is
 written there; a Forth source you save from the app (section 2.8) lives in a sector of its
 own. That sector is not the one the 16-bit ZYNQ-FORTH uses, so a source saved by
 ZYNQ-FORTH stays in the flash untouched, and is there again if you go back to it.
@@ -109,7 +112,7 @@ the DDS own, as the app does (section 2.9).
 ### First session
 
 ```
-[zynq-forth32] 3.1, kernel 6011 words loaded and verified
+[zynq-dual-forth32] 4.0, core 0, kernel 6219 words loaded and verified
 
 HF32 Forth on Arty Z7-20
 2 3 + . 5  ok
@@ -133,7 +136,7 @@ out of an endless loop. It also removes all words you have defined. In the app, 
 
 ---
 
-## 2. The ZYNQ-FPGA-FORTH32 app
+## 2. The ZYNQ-DualCore-FORTH32 app
 
 The app is a small development environment for the HF32 on Windows:
 
@@ -153,21 +156,22 @@ IO13; the stack holds 12, 100 and -42.*
 
 ### 2.1 Connecting
 
-1. Start **ZynqForth32.exe** (version 3.1). It keeps its preferences, and the copy of this
-   manual it opens, in `%LocalAppData%\ZYNQ-FPGA-FORTH32`, apart from those of the 16-bit
-   ZYNQ-FORTH app, so both apps can be installed side by side.
+1. Start **ZynqDualForth32.exe** (version 4.0). It keeps its preferences, and the copy of
+   this manual it opens, in `%LocalAppData%\ZYNQ-DualCore-FORTH32`, apart from those of the
+   single-core and 16-bit apps, so they can all be installed side by side.
 2. Choose the board's port in the list at the top left (**↻** looks for ports again) and click
    **Connect**. The app remembers the port.
 3. The line beside the button shows the port, the firmware version and the kernel size.
    The terminal shows Forth's ` ok`, and the stack, dictionary and saved-source boxes fill.
 
-If the board does not answer, the app says so and disconnects: check that ZYNQ-FPGA-FORTH32
+If the board does not answer, the app says so and disconnects: check that ZYNQ-DualCore-FORTH32
 is on the board (chapter 1) and that no other program has the port open. **Disconnect**
 frees the port for a terminal program. While the app is connected, only it can use the port.
 
-Start options, for a shortcut: `ZynqForth32.exe [--skin "Lab panel"] [--connect [COMx]] [file.fs | file.pattern]`
-connects at once (to COMx, or without it to the port the app remembers), chooses a skin, or
-opens a file in the source or pattern editor.
+Start options, for a shortcut: `ZynqDualForth32.exe [--skin "Lab panel"] [--connect [COMx|SIM]] [--core 0|1] [file.fs | file.pattern]`
+connects at once (to COMx, the simulated board SIM, or without it to the port the app
+remembers), chooses a skin, or opens a file in the source or pattern editor (of the core
+named by the last `--core` before it).
 
 ### 2.2 The layout
 
@@ -2222,7 +2226,7 @@ For the power-up, build `BOOT.bin` and write it to flash (see the README).
 
 | Symptom | Cause and remedy |
 |---|---|
-| No banner, nothing happens | The banner came before you connected: press Ctrl-R (or *Restart* in the app). Check the port and 115200 baud. If LD0 is dark, ZYNQ-FPGA-FORTH32 is not running: check JP4 (QSPI) and the flash (chapter 1). |
+| No banner, nothing happens | The banner came before you connected: press Ctrl-R (or *Restart* in the app). Check the port and 115200 baud. If LD0 is dark, ZYNQ-DualCore-FORTH32 is not running: check JP4 (QSPI) and the flash (chapter 1). |
 | The app says the board does not answer | Another program has the port, the wrong port is chosen, or the board runs other firmware. |
 | The banner says `[zynq-forth]` and `HF16 Forth` | The board runs the 16-bit ZYNQ-FORTH. Flash this project's `BOOT.bin` (chapter 1). |
 | `VERIFY FAILED` at the start | The kernel image didn't read back correctly; the CPU stays in reset. Switch the board off and on. |

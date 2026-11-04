@@ -3,7 +3,7 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
-## 4.0 — unreleased
+## 4.0 — 2026-11-04
 
 - **App for two cores** (`ZynqDualForth32.exe`, settings in `%LocalAppData%\ZYNQ-DualCore-FORTH32`):
   a Core 0 / Core 1 switch (Ctrl+1 / Ctrl+2) gives each core its own terminal, source editor,
@@ -62,6 +62,11 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   JTAG with the app.
 - **App:** the buttons are enabled right after connecting (they waited for the first mouse or
   key input).
+- **Release:** names (`ZynqDualForth32.exe`, shortcut ZYNQ-DualCore-FORTH32 with a "2x32"
+  icon), README, manual and screenshots for 4.0; `Build-Release.ps1` builds the PDFs before
+  the app, which embeds the manual. Checked on the board: both cores give the simulator's
+  transcript on `smoke`, `divide`, `float` and `manual_checks`; the HASE node answers with
+  firmware 4.0.
 - **Kernel words for two cores**: `core#`, `send`, `receive`, `mail?`, `lock`, `try-lock`,
   `unlock`, `(lock)`, `shared`, `/shared`. The app's simulated board has the same ones
   (`send` takes no core number any more, `mail?` gives a flag). Manual: sections 2.11, 5.25

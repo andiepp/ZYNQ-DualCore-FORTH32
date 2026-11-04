@@ -66,15 +66,13 @@
 : /string ( a n k -- a+k n-k ) rot over + -rot - ;
 : s>d ( n -- d ) dup 0< ;
 
-\ Unsigned 32/32 division by shift and subtract: ( d q r ) during the loop
-: u/mod ( u d -- rem quot )
-  swap 0
-  32 0 do
-    over 0< if 2* 1+ else 2* then
-    swap 2* swap
-    rot 2dup u< if -rot else tuck - rot 1+ swap then
-  loop
-  rot drop swap ;
+\ Unsigned division in the hardware divider (op 33, 17 clocks): (um/mod) ( lo hi d -- quot )
+\ divides 64 by 32 bits and keeps the remainder, (urem) ( -- rem ) pushes it. Restoring
+\ long division with 32 kept bits, like the former Forth loops: a quotient that does not
+\ fit gives its low 32 bits of that loop, a zero divisor gives quotient -1, remainder lo.
+:inline (um/mod) (um/mod) ;  :inline (urem) (urem) ;
+:inline u/mod ( u d -- rem quot ) u/mod ;
+:inline um/mod ( ud u -- rem quot ) um/mod ;
 
 \ Symmetric signed division
 : /mod ( n d -- rem quot )
@@ -87,16 +85,6 @@
 
 \ Mixed precision: a double cell is ( low high ) with the high cell on top
 : um* ( u1 u2 -- ud ) 2dup * -rot (um*) ;
-
-\ Unsigned 64/32 division, the quotient must fit in 32 bits: ( d lo hi ) during
-\ the loop, the bit shifted out of HI is kept on the return stack
-: um/mod ( ud u -- rem quot )
-  -rot
-  32 0 do
-    dup 0< >r 2* over 0< if 1+ then swap 2* swap
-    rot 2dup u< 0= r> or if tuck - rot 1+ swap else -rot then
-  loop
-  rot drop swap ;
 
 \ n1*n2/n3 with a 64-bit intermediate product, symmetric like /
 : */ ( n1 n2 n3 -- n4 )

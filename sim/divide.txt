@@ -1,0 +1,10 @@
+100 7 u/mod . . 7 100 u/mod . . 0 5 u/mod . . 5 1 u/mod . .
+-1 1 u/mod . . -1 -1 u/mod . . -1 2 u/mod . . 12345 0 u/mod . .
+-1 $80000001 u/mod . . $80000000 $7FFFFFFF u/mod . . 1 -1 u/mod . .
+-7 2 /mod . . 7 -2 /mod . . -7 -2 /mod . . 7 2 /mod . . 0 -3 /mod . .
+-7 2 / . -7 2 mod . 7 -2 mod . -2147483648 -1 / . -2147483648 7 mod .
+0 1 7 um/mod . . -1 6 7 um/mod . . 5 0 0 um/mod . . -1 -1 2 um/mod . .
+1000000 3000 7 */ . -1000000 3000 7 */ . 2147483647 2 3 */ . 3 4 0 */ .
+: t 0 swap 0 do i 37 u/mod + + loop ; 1000 t . 77 3 2 (um/mod) . (urem) .
+hex 1234ABCD 10 u/mod . . decimal 1234567890 . -987654321 . 4000000000 u.
+1 2 3 4 5 .s 2drop 2drop drop 1e6 f. 2.5e-3 fs. 12345 s>f f.

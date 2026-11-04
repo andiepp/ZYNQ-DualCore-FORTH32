@@ -21,32 +21,34 @@ divider** and a **second HF32 core**. The version line is 4.x.
 | # | Step | State |
 |---|---|---|
 | 1 | Standalone app for two cores, protocol 3 drafted, simulated board in the app | done 2026-11-04 |
-| 2 | Hardware divider in the multi-cycle unit (single core first), ISS and kernel | next |
+| 2 | Hardware divider in the multi-cycle unit (single core first), ISS and kernel | done 2026-11-04 (board test with step 6) |
 | 3 | Second HF32 + its own unit and RAM in `forth_system`; per-core I/O decode, mailboxes, shared RAM window, pin ownership per core | |
 | 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | |
 | 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | |
 | 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | |
 | later | HASE: the node shows core 0 as today; core 1 in the HASE panel needs its own HASE-Lab ADR | |
 
-## Step 2: hardware divider
+## Step 2: hardware divider (done)
 
-Today `u/mod`, `/mod` and `um/mod` are Forth loops (about 650 instructions, 13 µs). The
-multi-cycle unit (`rtl/hf32_mcu.v`) gets an unsigned radix-2 divider, 32/32 bits, one
-quotient bit per clock (about 34 clocks with decode and the result).
+As built (design.md 3.3, 4.1, 7.9): the multi-cycle unit (`rtl/hf32_mcu.v`, op 10) divides
+64 by 32 bits unsigned, two quotient bits per clock, 17 clocks. That made one instruction
+enough for both `um/mod` and `u/mod` (the latter with a high cell of 0), rather than the
+32/32 pair first planned.
 
-- **Instructions:** two free `op` codes (33 and up are free; the field has 6 bits) and two
-  free unit codes (10 and up): *N / T unsigned, quotient* and *N / T unsigned, remainder*.
-  The unit keeps the last operands and both results, so the second of a `u/mod` pair with the
-  same operands finishes in 2 clocks instead of a second division.
-- **Division by zero:** a fixed result (quotient all ones, remainder N, as RISC-V does);
-  the kernel's `/` and `mod` keep their own check if they report an error today.
-- **Kernel:** `u/mod`, `/mod`, `/`, `mod` on top of the new primitives; signs handled in
-  Forth (floored or symmetric exactly as today, so 3.x sources give the same results).
-  `um/mod` (64/32) keeps its Forth long division, now built on 32/32 steps, unless a 64-bit
-  dividend variant proves worth the extra register.
-- **Verification:** the same pattern as the FPU: a Python model in `tools/hf32.py` (ISS),
-  a random-vector testbench of the RTL against the model (`sim/run_mcu.ps1`), the RTL = ISS
-  check of the kernel (`sim/run_sim.ps1`), then the board.
+- **Instructions:** op 33 `(um/mod)` ( lo hi d -- quot ), reading NN through a second read
+  port of the data stack; op 34 `(urem)` ( -- rem ), a single-cycle read of the remainder the
+  unit keeps.
+- **Results:** the restoring algorithm of the former Forth `um/mod` loop, so overflow and
+  division by zero (quotient −1, remainder the low dividend cell) give what 3.x gave.
+- **Kernel:** `u/mod` and `um/mod` are inline (`0 swap (um/mod) (urem) swap`,
+  `(um/mod) (urem) swap`); `/mod / mod */` unchanged on top of them.
+- **Verification:** `tools/test_fpu.py` checks the model against exact division,
+  `sim/run_mcu.ps1` the RTL against the model (6,000 divide vectors), and the kernel on the
+  whole RTL gives the ISS's output (`sim/run_regress.ps1`) for `smoke`, `divide`, `float`
+  and `manual_checks`; the slower peripheral inputs were not run (several minutes each, and
+  they don't exercise the divider beyond number output). The ISS gives the same output as the
+  3.1 kernel on all `sim/*.txt` inputs. The board test
+  comes with the dual-core firmware (step 6), or earlier if a single-core 3.2 build is wanted.
 
 ## Step 3 onwards: the second core
 

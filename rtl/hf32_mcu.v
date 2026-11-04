@@ -1,4 +1,5 @@
-// HF32 multi-cycle unit: the 32 x 32 multiply and the IEEE single-precision operations.
+// HF32 multi-cycle unit: the 32 x 32 multiply, the 64 / 32 divide and the IEEE
+// single-precision operations.
 // The CPU starts one operation, stalls until the result is valid and then takes it.
 // Semantics (docs/design.md, "Floating point"): round to nearest even; subnormal inputs
 // count as zero and results below the normal range become zero (sign kept); every NaN
@@ -15,6 +16,13 @@
 //    7  T to float         T         4
 //    8  FT to integer      FT        2    (toward zero, saturating; NaN gives 0)
 //    9  FT truncated       FT        2    (to an integral float toward zero)
+//   10  NN:N / T unsigned  NN   N    17   c = T; result = quotient, div_rem = remainder
+//
+// The divide is the restoring long division of the kernel's former Forth um/mod, two
+// quotient bits per clock: the partial remainder is shifted left with the next dividend bit
+// (33 bits), compared with the divisor and reduced, and only its low 32 bits are kept. So a
+// quotient that does not fit in 32 bits, and division by zero (quotient all ones, remainder
+// the low dividend cell), give exactly what that Forth loop gave.
 //
 // The value being normalized is m * 2^(e - 127) / 2^48: m is 50 bits wide, its leading
 // one belongs at bit 48 and bit 0 collects the bits shifted out (sticky).
@@ -28,19 +36,22 @@ module hf32_mcu (
     input  wire [3:0]  op,
     input  wire [31:0] a,
     input  wire [31:0] b,
+    input  wire [31:0] c,              // the divisor (op 10)
     input  wire        consume,        // the CPU takes the result
     output wire        busy,
     output wire        valid,
-    output reg  [31:0] result = 32'd0
+    output reg  [31:0] result = 32'd0,
+    output reg  [31:0] div_rem = 32'd0 // the remainder of the last divide, kept until the next
 );
 
     localparam [3:0] OP_MUL_LO = 4'd0, OP_MUL_HI = 4'd1, OP_FADD = 4'd2, OP_FSUB = 4'd3,
                      OP_FMUL = 4'd4, OP_FDIV = 4'd5, OP_FSQRT = 4'd6, OP_ITOF = 4'd7,
-                     OP_FTOI = 4'd8, OP_FTRUNC = 4'd9;
+                     OP_FTOI = 4'd8, OP_FTRUNC = 4'd9, OP_UMDIV = 4'd10;
 
     localparam [3:0] S_IDLE = 4'd0, S_MUL = 4'd1, S_MULOUT = 4'd2, S_UNPACK = 4'd3,
                      S_ALIGN = 4'd4, S_ADD = 4'd5, S_FMUL = 4'd6, S_DIV = 4'd7,
-                     S_SQRT = 4'd8, S_NORM = 4'd9, S_ROUND = 4'd10, S_DONE = 4'd11;
+                     S_SQRT = 4'd8, S_NORM = 4'd9, S_ROUND = 4'd10, S_DONE = 4'd11,
+                     S_IDIV = 4'd12;
 
     localparam [31:0] QNAN = 32'h7FC0_0000;
 
@@ -88,6 +99,9 @@ module hf32_mcu (
     reg [53:0]        rad = 54'd0;             // the square root's radicand, 2 bits per step
     reg [29:0]        srem = 30'd0;            // the square root's remainder
     reg [4:0]         cnt = 5'd0;
+    reg [31:0]        dv_lo = 32'd0;           // dividend bits still to come, then the quotient
+    reg [31:0]        dv_r = 32'd0;            // partial remainder
+    reg [31:0]        dv_d = 32'd0;            // divisor
 
     // significand product (a wire: inside a concatenation the product would be 24 bits)
     wire [47:0] mul_m = ma_r * mb_r;
@@ -96,6 +110,15 @@ module hf32_mcu (
     wire        div_ge  = rem >= {1'b0, mb_r};
     wire [24:0] div_sub = div_ge ? rem - {1'b0, mb_r} : rem;
     wire [26:0] div_q   = {q[25:0], div_ge};
+
+    // integer divide: two restoring steps per clock
+    wire [32:0] id_x1  = {dv_r, dv_lo[31]};
+    wire        id_ge1 = id_x1 >= {1'b0, dv_d};
+    wire [31:0] id_r1  = id_ge1 ? id_x1[31:0] - dv_d : id_x1[31:0];
+    wire [32:0] id_x2  = {id_r1, dv_lo[30]};
+    wire        id_ge2 = id_x2 >= {1'b0, dv_d};
+    wire [31:0] id_r2  = id_ge2 ? id_x2[31:0] - dv_d : id_x2[31:0];
+    wire [31:0] id_lo  = {dv_lo[29:0], id_ge1, id_ge2};
 
     // square root step
     wire [31:0] sq_rem2  = {srem, rad[53:52]};
@@ -135,8 +158,24 @@ module hf32_mcu (
                         opq <= op;
                         ra  <= a;
                         rb  <= b;
-                        st  <= op == OP_MUL_LO || op == OP_MUL_HI ? S_MUL : S_UNPACK;
+                        st  <= op == OP_MUL_LO || op == OP_MUL_HI ? S_MUL :
+                               op == OP_UMDIV ? S_IDIV : S_UNPACK;
+                        dv_lo <= a;
+                        dv_r  <= b;
+                        dv_d  <= c;
+                        cnt   <= 5'd15;
                     end
+
+                S_IDIV: begin
+                    dv_lo <= id_lo;
+                    dv_r  <= id_r2;
+                    cnt   <= cnt - 5'd1;
+                    if (cnt == 5'd0) begin
+                        result  <= id_lo;
+                        div_rem <= id_r2;
+                        st      <= S_DONE;
+                    end
+                end
 
                 S_MUL: begin
                     prod <= ra * rb;

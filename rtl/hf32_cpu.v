@@ -1,5 +1,6 @@
 // HF32: 32-bit dual-stack Forth CPU with a float stack, one instruction per clock except
-// the multiply and the floating-point operations, which run in hf32_mcu and stall it.
+// the multiply, the divide and the floating-point operations, which run in hf32_mcu and
+// stall it.
 // Encoding and semantics are documented in docs/design.md.
 //
 // Memory is a synchronous dual-port RAM outside this module:
@@ -47,6 +48,7 @@ module hf32_cpu #(
     reg  [31:0]   fstack [0:31];
 
     wire [31:0]   st1  = dstack[dsp];  // N
+    wire [31:0]   st2  = dstack[dsp - 5'd1];   // NN, the low dividend cell of op 33
     wire [31:0]   rst0 = rstack[rsp];  // R
     wire [31:0]   fn   = fstack[fsp];  // FN
 
@@ -66,7 +68,8 @@ module hf32_cpu #(
     wire [1:0] fd     = insn[12:11];
     wire [4:0] fop    = insn[10:6];
 
-    localparam [5:0] OP_MUL = 6'd21, OP_MULHI = 6'd24, OP_FTOI = 6'd31;
+    localparam [5:0] OP_MUL = 6'd21, OP_MULHI = 6'd24, OP_FTOI = 6'd31, OP_UMDIV = 6'd33,
+                     OP_UREM = 6'd34;
     localparam [4:0] F_ADD = 5'd4, F_SUB = 5'd5, F_MUL = 5'd6, F_DIV = 5'd7, F_SQRT = 5'd8,
                      F_ITOF = 5'd9, F_TRUNC = 5'd12;
 
@@ -85,6 +88,7 @@ module hf32_cpu #(
             op == OP_MUL:    begin u_op = 4'd0; u_a = st1; u_b = st0; end
             op == OP_MULHI:  begin u_op = 4'd1; u_a = st1; u_b = st0; end
             op == OP_FTOI:   begin u_op = 4'd8; u_a = ft; end
+            op == OP_UMDIV:  begin u_op = 4'd10; u_a = st2; u_b = st1; end
             fop == F_ADD:    u_op = 4'd2;
             fop == F_SUB:    u_op = 4'd3;
             fop == F_MUL:    u_op = 4'd4;
@@ -97,16 +101,16 @@ module hf32_cpu #(
     end
 
     wire        u_busy, u_valid;
-    wire [31:0] u_result;
+    wire [31:0] u_result, u_rem;
     wire        u_wait = u_need && !u_valid;
     wire        hold   = stall | u_wait;
 
     hf32_mcu mcu (
         .clk(clk), .rst(rst),
         .start(u_need && !u_valid && !u_busy && !stall && !rst),
-        .op(u_op), .a(u_a), .b(u_b),
+        .op(u_op), .a(u_a), .b(u_b), .c(st0),
         .consume(u_need && u_valid && !stall && !rst),
-        .busy(u_busy), .valid(u_valid), .result(u_result)
+        .busy(u_busy), .valid(u_valid), .result(u_result), .div_rem(u_rem)
     );
 
     // ------------------------------------------------------------------
@@ -173,6 +177,8 @@ module hf32_cpu #(
             6'd30: alu = {32{ft_mag == 31'd0}};                  // FT = 0
             6'd31: alu = u_result;                               // FT to integer
             6'd32: alu = {27'd0, fsp};
+            6'd33: alu = u_result;                               // NN:N / T, quotient
+            6'd34: alu = u_rem;                                  // remainder of the last divide
             default: alu = st0;
         endcase
     end

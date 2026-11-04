@@ -217,6 +217,22 @@ def fraction_to_f32(v):
     return (s << 31) | (be << 23) | (mant & 0x7FFFFF)
 
 
+def um_div(lo, hi, d):
+    """The divider of rtl/hf32_mcu.v (op 10): NN:N / T as (remainder, quotient), the restoring
+    long division with a 33-bit partial remainder of which 32 bits are kept, bit for bit the
+    former Forth um/mod (overflow and division by zero included)."""
+    r = hi & M32
+    lo &= M32
+    for _ in range(32):
+        x = (r << 1) | (lo >> 31)
+        lo = (lo << 1) & M32
+        if x >= d:
+            x -= d
+            lo |= 1
+        r = x & M32
+    return r, lo
+
+
 def f32_value(x):
     """The value of single x as a Python float (inf and nan included)."""
     import struct
@@ -232,7 +248,7 @@ OPS = {
     'N<T': 8, 'Nu<T': 9, 'N>>T': 10, 'N<<T': 11, 'R': 12, '[T]': 13, 'c[T]': 14,
     'depth': 15, 'N-T': 16, 'T+1': 17, 'T-1': 18, 'T=0': 19, 'T<0': 20, 'N*T': 21,
     'T/2': 22, '-T': 23, 'N*Thi': 24, 'N>>>T': 25, 'FT': 26, 'FN<FT': 27, 'FN=FT': 28,
-    'FT<0': 29, 'FT=0': 30, 'F>S': 31, 'fdepth': 32,
+    'FT<0': 29, 'FT=0': 30, 'F>S': 31, 'fdepth': 32, 'NN:N/T': 33, 'urem': 34,
 }
 FOPS = {
     'FT': 0, 'FN': 1, 'T': 2, '[T]': 3, 'FN+FT': 4, 'FN-FT': 5, 'FN*FT': 6, 'FN/FT': 7,
@@ -277,6 +293,12 @@ PRIMS = {
     'arshift': [alu('N>>>T', dd=-1)],
     '*':       [alu('N*T', dd=-1)],
     '(um*)':   [alu('N*Thi', dd=-1)],     # high cell of the unsigned product
+    # ( lo hi d -- quot ), the remainder stays in the unit; (urem) ( -- rem ) pushes it
+    '(um/mod)': [alu('NN:N/T', dd=-2)],
+    '(urem)':  [alu('urem', dd=1)],
+    'um/mod':  [alu('NN:N/T', dd=-2), alu('urem', dd=1), alu('N', t2n=True)],
+    'u/mod':   [0x80000000, alu('N', t2n=True), alu('NN:N/T', dd=-2), alu('urem', dd=1),
+                alu('N', t2n=True)],
     'invert':  [alu('~T')],
     '1+':      [alu('T+1')],
     '1-':      [alu('T-1')],
@@ -691,6 +713,7 @@ class Machine:
         self.rsp = 0
         self.fsp = 0
         self.ds = [0] * 32
+        self.urem = 0                   # the divider's remainder register
         self.rs = [0] * 32
         self.fs = [0] * 32
         self.rx = bytearray(rx)
@@ -927,6 +950,9 @@ class Machine:
             elif 27 <= op <= 30: v = flag(f_cmp(fn, ft)[op - 27])
             elif op == 31: v = f_to_i(ft)
             elif op == 32: v = self.fsp
+            elif op == 33:
+                self.urem, v = um_div(self.ds[(self.dsp - 1) & 31], n, t)
+            elif op == 34: v = self.urem
             else:          v = t
             v &= M32
 

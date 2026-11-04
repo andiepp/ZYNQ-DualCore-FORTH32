@@ -15,6 +15,15 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   still talks to firmware 3.x (protocol 2) as a single core.
 - **Simulated board** in the app (port `SIM`): protocol 3 with two small interpreters, for
   trying the app and for the unit tests before the dual-core firmware exists.
+- **Hardware divider** in the multi-cycle unit: 64 / 32 bits unsigned, two quotient bits per
+  clock, 17 clocks. New instructions `(um/mod)` ( lo hi d -- quot, op 33, reads NN through a
+  second stack read port) and `(urem)` ( -- rem, op 34). `u/mod` and `um/mod` are now inline
+  words on them (21 and 19 clocks instead of about 650 instructions, 13 µs); `/mod / mod */`,
+  number output and the float conversions get faster with them. The results are the same as
+  with the former Forth loops, bit for bit, including overflow and division by zero.
+  Checked with `tools/test_fpu.py` (model against exact division), `sim/run_mcu.ps1` (RTL
+  against the model) and the new `sim/run_regress.ps1` (RTL = ISS on `smoke`, the new
+  `divide`, `float` and `manual_checks`).
 
 ## ZYNQ-FPGA-FORTH32
 

@@ -729,6 +729,8 @@ arithmetic, see section 5.15.
 | `*/` | `( n1 n2 n3 -- n4 )` | n1 × n2 / n3 with a 64-bit intermediate product, so the product may exceed 32 bits: `100000 100000 1000 */` gives 10000000. Rounds toward zero. |
 | `um*` | `( u1 u2 -- ud )` | Full 64-bit unsigned product as two cells, the high cell on top: `-1 -1 um*` gives 1 −2 (4294967294). |
 | `um/mod` | `( ud u -- rem quot )` | Divide a 64-bit unsigned number by u. The quotient must fit in 32 bits (high cell < u). |
+| `(um/mod)` | `( ud u -- quot )` | The divide instruction itself: the quotient; the remainder stays in the divider for `(urem)`. |
+| `(urem)` | `( -- rem )` | The remainder of the last `(um/mod)`. Use it directly after it. |
 | `s>d` | `( n -- d )` | Extend a number to a double number with the same value: `-5 s>d` gives −5 −1. |
 | `dnegate` | `( d -- -d )` | Change the sign of a double number. |
 | `1+` | `( n -- n+1 )` | Add one. |
@@ -740,9 +742,10 @@ arithmetic, see section 5.15.
 | `min` | `( n1 n2 -- n )` | Smaller of two signed numbers. |
 | `max` | `( n1 n2 -- n )` | Larger of two signed numbers. |
 
-Division is done in software by shift-and-subtract (32 steps). Division by zero gives no
-error: `u/mod` then returns −1 as the quotient. `*/` and `um/mod` give a meaningless
-result if the quotient doesn't fit in 32 bits.
+Division is done by the hardware divider: `u/mod` and `um/mod` take 21 and 19 clocks
+(0.4 µs). Division by zero gives no error: `u/mod` then returns −1 as the quotient and the
+dividend as the remainder. `*/` and `um/mod` give a meaningless result if the quotient
+doesn't fit in 32 bits (the same result as on the single-core firmware 3.x).
 
 `*/` is the usual way to scale with fractions: `x 3320 4096 */` multiplies x by
 3320/4096 without losing the high bits of the product. `um*` gets its high cell from a

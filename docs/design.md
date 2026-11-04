@@ -51,7 +51,7 @@ answers the app's and the HASE laboratory's requests on the side.
 | Start-up | `cold` prints the banner, sets base and precision, enters `quit` | Loads the 6,011-cell kernel image into HF32's RAM over AXI, reads it back to verify it, releases the CPU from reset |
 | Terminal | Reads keys from the RX FIFO, echoes, prints into the TX FIFO | Moves UART bytes into the RX FIFO and the TX FIFO into the UART, through a 64 KB input ring and a 4 KB output ring |
 | Interpreting and compiling | All of it: parsing, dictionary search, numbers, floats, compiling, executing | Nothing |
-| Arithmetic | Integer ALU and multiplier, FPU (hardware); division, decimal conversion and elementary functions (Forth) | Nothing |
+| Arithmetic | Integer ALU, multiplier and divider, FPU (hardware); decimal conversion and elementary functions (Forth) | Nothing |
 | Board I/O | LEDs, pins, PWM, serial interfaces, DDS, tone, XADC, pattern generator, all as I/O registers at `$100000` | Only reads their state for the app's board view, without disturbing the CPU |
 | Service requests (`words`, `stack`, `board`, `source` …) | Nothing; Forth does not notice them | Answers them itself; for the dictionary and the stacks it pauses HF32 for a few microseconds and reads its RAM |
 | Saved source | Compiles it as if it were typed | Keeps it in QSPI flash and feeds it into Forth's input at every start (autostart) |
@@ -133,14 +133,16 @@ clock and that the compiler never has to schedule around anything except the sto
 
 ### 2.2 Resources used
 
-From the implementation report of release 3.1 (`build/hw/utilization.rpt`):
+From the implementation report of the single-core design with the hardware divider
+(ZYNQ-DualCore-FORTH32 step 2, `build/hw/utilization.rpt`); the divider added 335 LUTs and 149
+flip-flops to release 3.1, no block RAM and no DSP:
 
 | Resource | Used | Available | % | Mostly in |
 |---|---|---|---|---|
-| Slice LUTs | 7,986 | 53,200 | 15.0 | CPU datapath, FPU, peripherals, pin router |
-| of which LUT RAM | 252 | 17,400 | 1.4 | the three 32-entry stacks, FIFOs |
-| Flip-flops | 4,260 | 106,400 | 4.0 | |
-| Slices | 2,893 | 13,300 | 21.8 | |
+| Slice LUTs | 8,321 | 53,200 | 15.6 | CPU datapath, FPU, divider, peripherals, pin router |
+| of which LUT RAM | 274 | 17,400 | 1.6 | the three 32-entry stacks (the data stack with a second read port for NN), FIFOs |
+| Flip-flops | 4,409 | 106,400 | 4.1 | |
+| Slices | 2,821 | 13,300 | 21.2 | |
 | Block RAM (36 Kb) | 41 | 140 | 29.3 | 32 for the 128 KB Forth RAM, 9 for the pattern memory |
 | DSP48 | 15 | 220 | 6.8 | 32 × 32 multiplier, FPU significand multiplier, PWM duty products, tone volume |
 | Bonded I/O pins | 94 | 125 | 75.2 | LEDs 10, buttons/switches 6, shield 42, analog 18, Pmods 16, audio 2 |
@@ -155,12 +157,14 @@ remaining 45,000 LUTs would hold several more CPUs.
 
 | Clock | Worst setup slack | Worst hold slack | Critical path |
 |---|---|---|---|
-| FCLK0, 50 MHz (20 ns) | 1.887 ns | 0.047 ns | ALU result → RAM port B address |
-| FCLK1, 200 MHz (5 ns) | 0.000 ns | 0.071 ns | pattern generator: fetch address → pattern memory |
+| FCLK0, 50 MHz (20 ns) | 3.246 ns | 0.037 ns | float stack pointer → I/O read data |
+| FCLK1, 200 MHz (5 ns) | 0.464 ns | 0.064 ns | pattern generator: fetch address → pattern memory |
 
-All constraints are met. The 200 MHz pattern generator's fetch path meets timing with no
-margin; it was the tightest path in 3.0 as well (0.23 ns then), and only the placement around it
-changed when the 3.1 peripherals were added. A register stage in the fetch path would give it
+All constraints are met (single core with the divider). The 50 MHz paths are not slower with
+the divider: it works in its own registers, two restoring steps per clock, and none of its
+paths is the worst one. In release 3.1 the worst 50 MHz path was the ALU result to the RAM's port B address
+(1.887 ns); the 200 MHz pattern generator's fetch path met timing with no margin then (0.000
+ns, 0.23 ns in 3.0) and depends on the placement around it. A register stage in the fetch path would give it
 margin at the cost of one more clock per jump (a possible future change).
 
 ## 3 The HF32 CPU
@@ -248,7 +252,8 @@ New T (`op`):
 | 13 | the cell at [T] | 30 | FT = 0 (−1 or 0) |
 | 14 | the byte at [T] | 31 | FT to integer, toward zero (multi-cycle) |
 | 15 | data stack depth | 32 | float stack depth |
-| 16 | N − T | | |
+| 16 | N − T | 33 | NN:N ÷ T unsigned, quotient (multi-cycle) |
+| | | 34 | the remainder of the last divide |
 
 New FT (`fop`):
 
@@ -291,6 +296,8 @@ encodings, as `tools/hf32.py` defines them:
 | `r@` | `63008000` | T ← R, dd +1 |
 | `+` | `60818000` | T ← N + T, dd −1 |
 | `*` | `65418000` | T ← N × T (multi-cycle), dd −1 |
+| `(um/mod)` | `68410000` | T ← NN:N ÷ T, quotient (multi-cycle), dd −2 |
+| `(urem)` | `68808000` | T ← the divider's remainder, dd +1 |
 | `@` | `63400000` | T ← [T] |
 | `c@` | `63800000` | T ← byte [T] |
 | `!` | `60518000 60418000` | store N at [T], T ← N, dd −1; then `drop` |
@@ -411,6 +418,20 @@ waits in the `DONE` state until the CPU continues.
 | T to float (`s>f`) | 7 | T | 4 |
 | FT to integer (`f>s`) | 8 | FT | 2 |
 | FT truncated (`ftrunc`) | 9 | FT | 2 |
+| NN:N ÷ T unsigned (`(um/mod)`) | 10 | NN, N, and T as the third operand | 17 |
+
+The divide is the only operation with three operands: the CPU reads NN through a second read
+port of the data stack, and passes T as the divisor. It is a restoring long division, two
+quotient bits per clock: the 32-bit partial remainder (starting as N) is shifted left by one
+with the next bit of NN, compared as 33 bits with the divisor, reduced if it is not smaller,
+and the quotient bit enters NN from the right. After 16 clocks NN holds the quotient, which
+becomes the result, and the remainder goes into a register of the unit (`div_rem`), which
+`(urem)`, a single-cycle instruction, reads. The register keeps the last remainder until the
+next divide, so `(um/mod) (urem)` belong together and nothing may divide between them.
+
+The algorithm is the former Forth `um/mod` loop of firmware 3.x, so the results are the same
+bit for bit also where the quotient does not fit in 32 bits (its low 32 bits come out) and
+for a zero divisor (quotient all ones, remainder NN).
 
 Operations whose result is decided by a special operand (a NaN, an infinity, a zero) finish
 in the unpack state, in 2 clocks.
@@ -1185,16 +1206,16 @@ plus the work of `.` and `(loop)`.
 
 ### 7.9 Integer arithmetic
 
-The hardware multiplies (3 clocks) but does not divide; division is Forth:
+The hardware multiplies (3 clocks) and divides (17 clocks):
 
-- **`u/mod`** is a 32-step shift-and-subtract loop: about 650 instructions, 13 µs.
+- **`um/mod`** ( ud u -- rem quot ) is inline: `(um/mod) (urem) swap`, 19 clocks (0.38 µs).
+- **`u/mod`** ( u d -- rem quot ) is inline: `0 swap (um/mod) (urem) swap`, 21 clocks. The
+  Forth loop of firmware 3.x it replaces took about 650 instructions, 13 µs.
 - **`/mod`, `/`, `mod`** divide the absolute values with `u/mod` and fix the signs afterwards:
   symmetric division, the quotient rounds toward zero, as in the 16-bit Forth.
 - **`um*`** (32 × 32 → 64 bits) is two multiply instructions, the low cell (`*`) and the high
   cell (`(um*)`) of the unsigned product.
-- **`um/mod`** divides 64 by 32 bits in the same loop style, keeping the bit shifted out of the
-  high cell on the return stack. **`*/`** uses `um*` and `um/mod`, so n1 × n2 never overflows
-  in between.
+- **`*/`** uses `um*` and `um/mod`, so n1 × n2 never overflows in between.
 - A double cell is ( low high ), high on top, as in Forth-2012.
 
 ### 7.10 Floating point: hardware and Forth
@@ -1486,7 +1507,7 @@ is also available to any other program (`tools/zforth.py` is a command-line exam
 | Separate float stack | Forth-2012's model; integer and float code do not interfere; stack moves between them in one instruction |
 | Single precision, flush to zero | a small, fast FPU without a subnormal shifter; 7 decimal digits are plenty for laboratory values |
 | Decimal conversion in Forth, correctly rounded | exactness where it is visible (what is typed and printed) without hardware cost |
-| Division in Forth | a divider would cost logic for an operation that is rare in Forth code; 13 µs is acceptable |
+| A 64 / 32 divider, two bits per clock | `um/mod` and `u/mod` in one instruction each (plus the remainder); 17 clocks instead of 13 µs; the same algorithm as the former Forth loop, so 3.x sources give the same results |
 | Any peripheral on any pin | the board's pins are few and fixed; routing in the fabric costs little and the ownership table keeps it safe |
 | One firmware for terminal, app and HASE | no mode switches for the user; the byte values tell the protocols apart |
 | Compatibility with the 16-bit design | sources, the app's protocol and the HASE panel keep working |
@@ -1501,6 +1522,5 @@ needs a change to what exists:
 - **Double precision** in the FPU, or a second float format on the same stack.
 - **The missing Forth words** (`does>`, `postpone`, `evaluate`, `case`, `value`, `defer`,
   `see` …), each a few hundred bytes of kernel.
-- **A hardware divider** in the multi-cycle unit (32 clocks instead of 650 instructions).
 - **A second HF32** running its own Forth, sharing the I/O.
 - **A register stage** in the pattern generator's fetch path, for timing margin at 200 MHz.

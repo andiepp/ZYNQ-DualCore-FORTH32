@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks the floating-point model in tools/hf32.py (the mirror of rtl/hf32_mcu.v)
-against IEEE single precision, and writes test vectors for the RTL testbench.
+against IEEE single precision and its divider against exact integer division, and writes
+test vectors for the RTL testbench (op a b c result remainder, hex).
 
     python tools/test_fpu.py [-n 200000] [--vectors build/sim/mcu_vectors.txt]
 
@@ -104,7 +105,7 @@ MODEL = {
     'sqrt': lambda a, b: hf32.f_sqrt(a),
 }
 RTL_OP = {'add': 2, 'sub': 3, 'mul': 4, 'div': 5, 'sqrt': 6, 'itof': 7, 'ftoi': 8,
-          'trunc': 9, 'mullo': 0, 'mulhi': 1}
+          'trunc': 9, 'mullo': 0, 'mulhi': 1, 'udiv': 10}
 
 SPECIAL = [0x00000000, 0x80000000, 0x3F800000, 0xBF800000, 0x7F800000, 0xFF800000,
            0x7FC00000, 0x7F800001, 0x00000001, 0x807FFFFF, 0x00800000, 0x80800000,
@@ -209,11 +210,37 @@ def main():
     print(f'conv : {args.n} cases each, {fails} mismatches')
     bad += fails
 
+    # the divider: exact where the quotient fits, the fixed results for a zero divisor
+    fails = 0
+    edges = [0, 1, 2, 3, 7, 10, 0x7FFFFFFF, 0x80000000, 0x80000001, M32]
+    for i in range(args.n):
+        d = rng.choice(edges) if i % 3 == 0 else rng.getrandbits(rng.randint(1, 32))
+        lo = rng.choice(edges) if i % 5 == 0 else rng.getrandbits(32)
+        fits = i % 4 != 0
+        hi = (rng.getrandbits(32) % d if d else 0) if fits else rng.getrandbits(32)
+        rem, quot = hf32.um_div(lo, hi, d)
+        if d == 0:
+            want = (lo, M32) if hi == 0 else None
+        elif (hi << 32 | lo) // d <= M32:
+            q, r = divmod(hi << 32 | lo, d)
+            want = (r, q)
+        else:
+            want = None                   # overflow: whatever the loop gives, the RTL must match
+        if want is not None and (rem, quot) != want:
+            fails += 1
+            if fails <= 5:
+                print(f'udiv {hi:08X}:{lo:08X} / {d:08X}: model {rem:08X} {quot:08X} want {want}')
+        if i < args.vector_count:
+            vectors.append((RTL_OP['udiv'], lo, hi, quot, d, rem))
+    print(f'udiv : {args.n} cases, {fails} mismatches')
+    bad += fails
+
     if args.vectors:
         os.makedirs(os.path.dirname(args.vectors) or '.', exist_ok=True)
         with open(args.vectors, 'w') as f:
-            for op, a, b, r in vectors:
-                f.write(f'{op:x} {a:08x} {b:08x} {r:08x}\n')
+            for v in vectors:
+                op, a, b, r, c, rem = v if len(v) == 6 else (*v, 0, 0)
+                f.write(f'{op:x} {a:08x} {b:08x} {c:08x} {r:08x} {rem:08x}\n')
         print(f'{len(vectors)} vectors -> {args.vectors}')
     sys.exit(1 if bad else 0)
 

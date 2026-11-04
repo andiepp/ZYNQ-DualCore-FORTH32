@@ -53,6 +53,15 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   costs one clock more; the 50 MHz margin is back to 3.974 ns (from 0.136 ns). The arbiter's
   store hold is gone, and the CPU is its step-2 self again. The CPU's stacks start at 0, as
   in the simulator.
+- **Firmware 4.0** (`zynq-dual-forth32`, protocol 3): loads and runs both cores, one input
+  ring, output ring, saved source (core 1's at 0xFD0000) and start count per core; `input n`,
+  `mux on|off` with core markers (the first output after `mux on` is always marked),
+  core-addressed `status stack words restart source store erase autostart`, `cores 2` in
+  `version`, `core` and `mailbox` in `status`. The HASE node talks about core 0 and reports
+  4.0. On a single-core bitstream the firmware runs core 0 only. Checked on the board over
+  JTAG with the app.
+- **App:** the buttons are enabled right after connecting (they waited for the first mouse or
+  key input).
 
 ## ZYNQ-FPGA-FORTH32
 

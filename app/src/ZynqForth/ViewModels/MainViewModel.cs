@@ -402,6 +402,7 @@ public sealed class MainViewModel : ObservableObject
             SetStatus("Connected. Type Forth below, or run the editor's text with F5. Core 0 / Core 1 switch the view.", false);
             OnPropertyChanged(nameof(CanTalk));
             OnPropertyChanged(nameof(CoreReachable));
+            CommandManagerInvalidate();     // the buttons would wait for the next mouse or key input
             statusTimer.Start();
             UpdateBoardTimer();
             foreach (CoreViewModel core in Cores.Where(c => c.IsPresent))
@@ -409,6 +410,8 @@ public sealed class MainViewModel : ObservableObject
                 await client.SendLineAsync("", core.Index);    // Forth answers with its prompt
                 await RefreshAllAsync(client, core);
             }
+
+            CommandManagerInvalidate();     // Load and Erase depend on the saved source just read
         }
         catch (Exception exception) when (exception is LinkException or BoardRefusedException or InvalidOperationException)
         {

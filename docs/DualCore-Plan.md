@@ -23,7 +23,7 @@ divider** and a **second HF32 core**. The version line is 4.x.
 | 1 | Standalone app for two cores, protocol 3 drafted, simulated board in the app | done 2026-11-04 |
 | 2 | Hardware divider in the multi-cycle unit (single core first), ISS and kernel | done 2026-11-04 (board test with step 6) |
 | 3 | Second HF32 + its own unit and RAM in `forth_system`; per-core I/O decode, mailboxes, shared RAM window, pin ownership per core | |
-| 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | |
+| 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | done 2026-11-04 (on the board over JTAG; not flashed) |
 | 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | |
 | 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | |
 | later | HASE: the node shows core 0 as today; core 1 in the HASE panel needs its own HASE-Lab ADR | |
@@ -93,6 +93,25 @@ Three parts, each checked before the next:
    in the simulator: an underflow had read unknown values and frozen the testbench).
    50 MHz slack 3.974 ns (from 0.136), 200 MHz 0.465 ns; the three two-core tests and
    single-core `smoke`/`shield` RTL = ISS. An I/O access costs one clock more.
+
+## Step 4: ARM firmware 4.0 (done)
+
+`sw/src/main.c` keeps one `struct core` per core (register offset, flash sector, 64 KB input
+ring, 4 KB output ring, start count, saved source) and implements protocol 3 (Protocol.md):
+`version` reports `cores 2`, per-core requests take a trailing core number, `input n` steers
+the terminal input, `mux on|off` sends both cores' output with core markers (the first output
+after `mux on` is always marked). The HASE node keeps talking about core 0 (it now reports
+firmware 4.0). On a single-core bitstream (CORES register 0) it runs core 0 only.
+
+Checked on the board over JTAG (bitstream of step 3 with the bus register stage, firmware
+built from this tree): both cores start and read their own core number, the mailbox carries a
+word from core 0 to core 1 and back, `status`/`stack`/`words`/`restart` per core, `status 2`
+refused, core 1's output held with `mux off` and delivered behind its marker after `mux on`,
+core 0 keeps running through a restart of core 1. The app (protocol 3) connects, shows both
+cores with their own terminal, stacks and dictionary (and its buttons are enabled right after
+connecting now; they had waited for the first mouse or key input). Not checked yet: the saved
+source of core 1 (`store … 1`, flash sector 0xFD0000), the HASE node with firmware 4.0, the
+peripherals from both cores at once on the board.
 
 ## Step 3 onwards: notes
 

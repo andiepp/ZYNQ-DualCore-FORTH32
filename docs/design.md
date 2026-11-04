@@ -920,16 +920,22 @@ boot image `BOOT.bin` (built by `sw/build_boot.ps1` with `bootgen`) holds three 
 
 The ARM program then:
 
-1. waits 50 ms, so the debounced BTN3 is valid when it decides about the autostart;
-2. reads the saved source's header from flash (section 6.6);
-3. `load_and_start`: sets CTRL = hold (the CPU and its FIFOs in reset), writes the 6,011
-   kernel cells through MEM_DATA (the address increments by itself), reads every cell back
-   and compares, prints `[zynq-forth32] 3.1, kernel 6011 words loaded and verified` (or
-   `VERIFY FAILED`, leaving the CPU in reset), decides about the autostart and clears CTRL:
-   HF32 starts at address 0, which holds a jump to `cold`.
+1. reads CORES (0x3C): 2 on the dual-core logic; on a single-core bitstream (0) it runs core 0
+   only and never touches 0x40.., which there would reach core 0's registers;
+2. waits 50 ms, so the debounced BTN3 is valid when it decides about the autostart;
+3. reads each core's saved source header from flash (section 6.6);
+4. `load_and_start` for each core: sets the core's CTRL = hold (the core and its FIFOs in
+   reset), writes the kernel cells through its MEM_DATA (the address increments by itself),
+   reads every cell back and compares, prints `[zynq-dual-forth32] 4.0, core n, kernel 6134
+   words loaded and verified` into that core's output (or `VERIFY FAILED`, leaving the core
+   in reset), decides about the core's autostart and clears CTRL: the core starts at address
+   0, which holds a jump to `cold`. Both cores get the same image; `$10001C` tells each one
+   which it is.
 
-A restart (the `restart` request, Ctrl-R, HASE function 0x31) runs `load_and_start` again: the
-whole RAM image is reloaded, so a crashed or overwritten kernel always recovers.
+A restart (the `restart [skip] [core]` request, Ctrl-R for the core the input points at, HASE
+function 0x31 for core 0) runs `load_and_start` again for that core only: its RAM image is
+reloaded, so a crashed or overwritten kernel always recovers, and the other core keeps
+running (section 5.16: only what the restarted core held is reset).
 
 ### 6.3 Pause and RAM reads
 
@@ -952,12 +958,17 @@ for (;;) {
 }
 ```
 
-`pump` does the byte transport: input-ring bytes (and the autostart source, fed after the
-kernel) into the RX FIFO while it has room; TX FIFO bytes into the 4 KB output ring; the ring
-into the UART as fast as it sends. When the ring is full, the ARM stops popping the TX FIFO,
-the FIFO fills, and Forth waits in `emit`, so no output is ever lost on the terminal. A byte
-0x01 printed by Forth goes out doubled (0x01 0x01), so it cannot be mistaken for the start of
-an answer.
+`pump` does the byte transport for each core: input-ring bytes (64 KB per core, and the
+autostart source, fed after the kernel) into the core's RX FIFO while it has room; TX FIFO
+bytes into the core's 4 KB output ring; the rings into the UART as fast as it sends. Core 0's
+ring always goes to the UART, core 1's only with `mux on` (Protocol.md); otherwise core 1's
+output waits in its ring, the oldest bytes dropped when it is full. When the ring of a core
+whose output goes to the UART is full, the ARM stops popping its TX FIFO, the FIFO fills, and
+that Forth waits in `emit`, so no output is ever lost on the terminal. With both cores going
+out, the sender puts a core marker (SOH `@n` LF) before a run of the other core's bytes, and
+changes cores at the end of a line or when the current core has nothing more. A byte 0x01
+printed by Forth goes out doubled (0x01 0x01), so it cannot be mistaken for the start of an
+answer or a marker.
 
 ### 6.5 Terminal and service requests
 
@@ -967,13 +978,16 @@ apart from the terminal bytes, executes it and answers SOH, `ok <request> <lengt
 payload, or `err <request> <reason>` LF. An answer first flushes the output ring and then goes
 out whole, so it never splits a piece of Forth's output and the reader can separate the two
 streams byte by byte. Requests: `echo`, `version`, `status`, `restart [skip]`, `words`, `stack`,
-`board`, `source`, `store`, `erase`, `autostart`. Forth never sees them and keeps running.
-Ctrl-R (0x12) typed at a terminal restarts Forth, the way out of an endless loop.
+`board`, `source`, `store`, `erase`, `autostart`, and for two cores `input n` and `mux on|off`;
+the requests about one Forth take a trailing core number (`status 1`). Forth never sees them
+and keeps running. Ctrl-R (0x12) typed at a terminal restarts the Forth the input points at,
+the way out of an endless loop.
 
 ### 6.6 Saved source
 
-One Forth source of up to 65,520 bytes lives in the 64 KB flash sector at `0xFE0000`, far
-above `BOOT.bin`, behind a 16-byte header: magic `HF32`, length, CRC-32 of the text, autostart
+Each core has one Forth source of up to 65,520 bytes in a 64 KB flash sector, far above
+`BOOT.bin`: core 0 at `0xFE0000` (the single-core firmware's sector, so its source carries
+over), core 1 at `0xFD0000`. Behind a 16-byte header: magic `HF32`, length, CRC-32 of the text, autostart
 flag (little-endian). The 16-bit ZYNQ-FORTH keeps its own source at `0xFF0000` with magic
 `HF16`, so switching between the two firmwares loses neither. The `store` request receives the
 text with its CRC into a staging buffer, checks it, erases the sector and programs it, then

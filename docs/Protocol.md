@@ -166,10 +166,10 @@ fn 801A 801B 0000 …           14 pin functions (firmware 3.1 and later)
 
 ## Two cores (protocol 3)
 
-> **Draft, ZYNQ-DualCore-FORTH32 4.0.** The app implements this already, and so does its
-> built-in simulated board (port `SIM`). The dual-core firmware does not exist yet.
-> Everything above stays valid: a protocol 2 client, or a terminal program, sees core 0 as
-> if it were the only one.
+> **ZYNQ-DualCore-FORTH32 4.0** (firmware `zynq-dual-forth32 4.0`, `sw/src/main.c`). The app
+> implements it, and so does its built-in simulated board (port `SIM`). Everything above
+> stays valid: a protocol 2 client, or a terminal program, sees core 0 as if it were the only
+> one. On a single-core bitstream the firmware reports `cores 1` and runs core 0 only.
 
 The board has two independent HF32 Forths, **core 0** and **core 1**. Each has its own RAM,
 kernel, dictionary, stacks, input ring and saved source; they share the board's I/O. The one
@@ -206,8 +206,11 @@ core other than the last one marked, the board sends a **core marker**:
 01 "@0" 0A          and from here on core 0's again
 ```
 
-Right after `mux on`, the output is core 0's (no marker needed). Output held while
-multiplexing was off follows the answer at once, each behind its marker. A marker never
+After the answer to `mux on`, the first output carries a marker too, whichever core it
+comes from, so a client never has to guess. Output held while multiplexing was off follows
+the answer at once, each behind its marker. With both cores printing, the board changes
+cores at the end of a line (or when a core has nothing more), so neither waits long.
+After `mux off`, the output is core 0's, without markers. A marker never
 appears inside an answer, and core output never between a marker and its LF. A reader
 extends rule 3 of the stream splitting: a header line `@` plus one digit is a marker, not an
 answer, and carries no payload.
@@ -221,7 +224,7 @@ every `version` it uses to connect. The HASE mode (below) always talks about cor
 PC:    01 "version" 0A
 board: 01 "ok version …" 0A  "firmware zynq-dual-forth32 4.0" 0A … "cores 2" 0A
 PC:    01 "mux on" 0A
-board: 01 "ok mux 0" 0A  01 "@1" 0A  "[zynq-dual-forth32] core 1 …"
+board: 01 "ok mux 0" 0A  01 "@1" 0A  "[zynq-dual-forth32] 4.0, core 1, kernel …"
 PC:    01 "input 1" 0A
 board: 01 "ok input 0" 0A
 PC:    "2 3 + ." 0D

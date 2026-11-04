@@ -1,37 +1,46 @@
 /*
- * ARM side of ZYNQ-FPGA-FORTH32 (bare metal, Cortex-A9 core 0) on the USB UART, 115200 8N1.
+ * ARM side of ZYNQ-DualCore-FORTH32 (bare metal, Cortex-A9 core 0) on the USB UART, 115200 8N1.
  *
- * Loads the Forth kernel image into the HF32 RAM over AXI-Lite, verifies it and releases
- * the CPU. The UART then carries Forth's terminal as plain bytes, so any serial terminal
- * talks to Forth directly. The ZYNQ-FORTH32 app additionally sends service requests: a
- * request starts with SOH (0x01) and ends with LF; the answer starts with SOH as well and
- * is never mixed into Forth's output. A 0x01 that Forth itself prints goes out doubled.
- * Ctrl-R (0x12) typed at a terminal restarts Forth. The protocol: docs/Protocol.md.
+ * Loads the Forth kernel image into the RAM of each HF32 core over AXI-Lite, verifies it and
+ * releases the core. The UART then carries Forth's terminal as plain bytes, so any serial
+ * terminal talks to core 0's Forth directly. The ZYNQ-DualCore-FORTH32 app additionally
+ * sends service requests: a request starts with SOH (0x01) and ends with LF; the answer
+ * starts with SOH as well and is never mixed into Forth's output. A 0x01 that Forth itself
+ * prints goes out doubled. Ctrl-R (0x12) typed at a terminal restarts the core the input
+ * points at. The protocol: docs/Protocol.md (protocol 3, two cores).
+ *
+ * Two cores: each has its own input ring, output ring, saved source and start count. The
+ * terminal input goes to one of them (request "input n", core 0 after power-up). Core 0's
+ * output goes to the UART; core 1's waits in its ring until a client asks for both with
+ * "mux on": then the output of both goes out, each run behind a core marker (SOH "@n" LF).
+ * Requests about one Forth take a trailing core number (status 1, restart skip 1, ...).
+ * On a single-core bitstream (AXI register CORES not 2) the firmware runs core 0 only.
  *
  * The same UART also serves the HASE laboratory, whose host speaks MCNF (mcnf_node.c):
  * every MCNF message starts with a byte 0xA_, which a terminal never sends to Forth. Such
  * a byte between two terminal requests starts a probe: Forth's output is held from then
  * on, and a valid MCNF frame within 2 s switches the link to HASE mode, where the node
- * answers MCNF requests only and Forth's output waits in the output ring for the host to
- * fetch it (the oldest bytes are dropped when nobody does). A probe without a valid frame
- * falls back to the terminal. In HASE mode, a terminal byte (printable ASCII, CR, LF, BS,
- * SOH, Ctrl-R) between two frames switches back, and the held output is sent first.
+ * answers MCNF requests only and core 0's output waits in its ring for the host to fetch
+ * it (the oldest bytes are dropped when nobody does). A probe without a valid frame falls
+ * back to the terminal. In HASE mode, a terminal byte (printable ASCII, CR, LF, BS, SOH,
+ * Ctrl-R) between two frames switches back, and the held output is sent first. The HASE
+ * node talks about core 0 only.
  *
- * The input ring (64 KB, a whole source fits) feeds the RX FIFO as Forth reads it. On the
- * terminal, Forth's output waits in the TX FIFO when the UART is busy, so nothing is ever
- * dropped.
+ * The input rings (64 KB each, a whole source fits) feed the RX FIFOs as Forth reads them.
+ * On the terminal, Forth's output waits in the TX FIFO when the UART is busy, so nothing
+ * that goes to the UART is ever dropped.
  *
- * One Forth source can be saved in the QSPI flash (flash.c). At power-up and at every
- * restart it is fed to Forth after the kernel (autostart), unless autostart is off,
- * BTN3 is held, or the restart asks to skip it.
+ * One Forth source per core can be saved in the QSPI flash (flash.c). At power-up and at
+ * every restart it is fed to that core after the kernel (autostart), unless autostart is
+ * off, BTN3 is held, or the restart asks to skip it.
  *
- * The dictionary and the stacks are read while the CPU is paused (CTRL bit 1); the stacks
+ * The dictionary and the stacks are read while the core is paused (CTRL bit 1); the stacks
  * are the copies the kernel's QUIT makes before each line. Register map: docs/design.md.
  *
  * The HASE node keeps the 16-bit Forth-Lab's functions and answers them as before (cells
  * and addresses that do not fit 16 bits are clipped), so today's Forth-Lab panel works
- * unchanged; functions 0x45-0x48 give the 32-bit stack, the float stack and the full
- * dictionary addresses.
+ * unchanged; functions 0x45-0x49 give the 32-bit stack, the float stack, the full
+ * dictionary addresses and the pin functions.
  */
 
 #include <stdio.h>
@@ -45,21 +54,23 @@
 #include "forth_image.h"
 #include "mcnf_node.h"
 
-#define FIRMWARE_NAME       "zynq-forth32"
-#define FIRMWARE_VERSION    "3.1"
-#define FIRMWARE_MAJOR      3               /* as the HASE node reports it (function 0x15) */
-#define FIRMWARE_MINOR      1
-#define PROTOCOL_VERSION    2               /* 2: 32-bit cells and the float stack */
+#define FIRMWARE_NAME       "zynq-dual-forth32"
+#define FIRMWARE_VERSION    "4.0"
+#define FIRMWARE_MAJOR      4               /* as the HASE node reports it (function 0x15) */
+#define FIRMWARE_MINOR      0
+#define PROTOCOL_VERSION    3               /* 3: two cores; 2: 32-bit cells and the float stack */
+#define MAX_CORES           2
 
 #define UART                STDIN_BASEADDRESS   /* PS UART0, 115200 8N1 from the BSP */
 
 #define FORTH_BASE          0x43C00000u     /* fixed in hw/build_hw.tcl */
-#define REG_CTRL            0x00
-#define REG_MEM_ADDR        0x04
-#define REG_MEM_DATA        0x08
-#define REG_TX_POP          0x0C
-#define REG_RX_PUSH         0x10
-#define REG_STATUS          0x14
+#define CORE1_OFFSET        0x40            /* core 1's registers 0x00..0x14 */
+#define REG_CTRL            0x00            /* per core */
+#define REG_MEM_ADDR        0x04            /* per core */
+#define REG_MEM_DATA        0x08            /* per core */
+#define REG_TX_POP          0x0C            /* per core */
+#define REG_RX_PUSH         0x10            /* per core */
+#define REG_STATUS          0x14            /* per core */
 #define REG_BOARD           0x18
 #define REG_PORT0           0x1C            /* three ports, 4 bytes apart */
 #define REG_PWM             0x28
@@ -67,6 +78,7 @@
 #define REG_PG_STATUS       0x30            /* pattern generator: step, status */
 #define REG_PG_OUT          0x34            /* its enable mask and current levels */
 #define REG_FUNC            0x38            /* pin functions: write selects, read gives one */
+#define REG_CORES           0x3C            /* number of cores, words in each mailbox */
 #define FUNC_COUNT          14              /* UART, SPI, I2C, DDS signals and the tone */
 
 #define CTRL_HOLD           0x1
@@ -87,13 +99,14 @@
 #define SOURCE_MAGIC        0x32334648u     /* "HF32" */
 #define SOURCE_HEADER       16u
 #define SOURCE_MAX          (FLASH_SECTOR_SIZE - SOURCE_HEADER)
+#define FLASH_SOURCE_BASE1  0xFD0000u       /* core 1's saved source; core 0 keeps 0xFE0000 */
 
 #define STACK_MAX           20              /* ssnap and fssnap in kernel.fs */
 #define PC_MASK             0x7FFF          /* STATUS bits 30..16: the CPU's word address */
 #define DICT_MAX            2048
 #define NAME_MAX            31
 
-/* HASE node device functions (channel 0xA5), as HASE-Lab's Forth-Lab family uses them */
+/* HASE device functions (HASE-Lab Hase.Mcnf.ForthLab.ForthLabFunctions) */
 #define FN_VERSION          0x15
 #define FN_STATUS           0x30
 #define FN_RESTART          0x31
@@ -126,29 +139,49 @@
 #define AUTO_FED            0x4
 #define AUTO_SKIPPED        0x8
 
-/* the output ring holds Forth's bytes as printed; a SOH is doubled on its way to the UART */
-static u8 in_ring[IN_SIZE], out_ring[OUT_SIZE];
-static u32 in_head, in_tail, out_head, out_tail;    /* free-running indices */
-static u32 out_dropped;                             /* oldest bytes dropped in HASE mode */
-static int soh_half;                                /* the first of a doubled SOH is out */
-static u16 starts;
-static int running;
-static u16 image_checksum;                          /* 16-bit sum of the image's words */
+/* one Forth core and what the ARM keeps for it */
+struct core {
+    int index;
+    u32 base;                                       /* its registers 0x00..0x14 */
+    u32 flash_base;                                 /* its saved source's sector */
+    u8 *in_ring, *out_ring;
+    u32 in_head, in_tail, out_head, out_tail;       /* free-running indices */
+    u32 out_dropped;                                /* oldest bytes dropped (not sent) */
+    u16 starts;
+    int running;
+    struct {
+        u32 magic, length, crc, autostart;
+    } stored;                                       /* the saved source's header as stored */
+    int stored_state;                               /* 0 none, 1 stored, 2 damaged */
+    u8 *sector;                                     /* the image of the whole sector */
+    u32 feed_pos, feed_len;                         /* autostart feed out of sector[] */
+    const char *last_start;                         /* "none", "fed" or "skipped" */
+};
 
-/* the saved source: header fields as stored, and the image of the whole sector */
-static struct {
-    u32 magic, length, crc, autostart;
-} stored;
-static int stored_state;                            /* 0 none, 1 stored, 2 damaged */
-static u8 sector[FLASH_SECTOR_SIZE], staging[SOURCE_MAX];
-static u32 feed_pos, feed_len;                      /* autostart feed out of sector[] */
-static const char *last_start = "none";             /* "fed" or "skipped" */
+/* the output rings hold Forth's bytes as printed; a SOH is doubled on its way to the UART */
+static u8 in_ring0[IN_SIZE], in_ring1[IN_SIZE], out_ring0[OUT_SIZE], out_ring1[OUT_SIZE];
+static u8 sector0[FLASH_SECTOR_SIZE], sector1[FLASH_SECTOR_SIZE], staging[SOURCE_MAX];
+static struct core cores[MAX_CORES] = {
+    { 0, FORTH_BASE, FLASH_SOURCE_BASE, in_ring0, out_ring0 },
+    { 1, FORTH_BASE + CORE1_OFFSET, FLASH_SOURCE_BASE1, in_ring1, out_ring1 },
+};
+static struct core *const c0 = &cores[0];          /* the HASE node's core */
+static int ncores = 1;                              /* 2 on the dual-core logic */
+static int input_core;                              /* where terminal input goes */
+static int mux;                                     /* both cores' output on the UART */
+static int out_core;                                /* whose output the UART carries now;
+                                                       -1: not yet marked since mux on */
+static u8 marker[4];                                /* a core marker on its way out */
+static int marker_left;
+static int soh_half;                                /* the first of a doubled SOH is out */
+static u16 image_checksum;                          /* 16-bit sum of the image's words */
 
 /* the request being received: its line, then the payload of a store */
 static enum { TERMINAL, LINE, PAYLOAD } rx_mode;
 static char line[LINE_MAX + 1];
 static u32 line_len, payload_len, payload_pos, payload_crc;
 static int payload_auto;
+static struct core *payload_core;
 static XTime rx_last;
 
 /* who the UART talks to: a terminal (or the app), a possible HASE host, the HASE host */
@@ -168,63 +201,114 @@ static u32 dict_latest, dict_here;
 /* UART and Forth's FIFOs                                                               */
 /* ------------------------------------------------------------------------------------ */
 
-/* into the output ring; full, it drops the oldest byte (only HASE mode lets it fill) */
-static void out_put(u8 c)
+/* into a core's output ring; full, it drops the oldest byte */
+static void out_put(struct core *c, u8 b)
 {
-    if (out_head - out_tail == OUT_SIZE) {
-        out_tail++;
-        out_dropped++;
-        soh_half = 0;
+    if (c->out_head - c->out_tail == OUT_SIZE) {
+        c->out_tail++;
+        c->out_dropped++;
+        if (c->index == out_core)
+            soh_half = 0;
     }
-    out_ring[out_head++ % OUT_SIZE] = c;
+    c->out_ring[c->out_head++ % OUT_SIZE] = b;
 }
 
-static void out_put_str(const char *s)
+static void out_put_str(struct core *c, const char *s)
 {
     while (*s)
-        out_put((u8)*s++);
+        out_put(c, (u8)*s++);
 }
 
-/* the output ring into the UART, a SOH doubled; blocking waits for room in the UART */
+/* whether a core's output goes to the UART now (core 0 always, core 1 with mux on) */
+static int to_uart(const struct core *c)
+{
+    return c->index == 0 || mux;
+}
+
+static int has_output(const struct core *c)
+{
+    return c->out_head != c->out_tail;
+}
+
+/* another core whose output may go out, or -1 */
+static int other_output(void)
+{
+    for (int k = 0; k < ncores; k++)
+        if (k != out_core && to_uart(&cores[k]) && has_output(&cores[k]))
+            return k;
+    return -1;
+}
+
+/* the output rings into the UART, a SOH doubled; with mux on a core marker goes out
+   before a run of another core's output, which starts when the current core's ring is
+   empty or at the end of one of its lines. Blocking waits for room in the UART. */
 static void uart_send(int blocking)
 {
-    while (out_tail != out_head) {
-        u8 c = out_ring[out_tail % OUT_SIZE];
-
+    for (;;) {
         if (XUartPs_IsTransmitFull(UART)) {
             if (!blocking)
                 return;
             continue;
         }
-        XUartPs_WriteReg(UART, XUARTPS_FIFO_OFFSET, c);
-        if (c == SOH && !soh_half) {
+        if (marker_left) {
+            XUartPs_WriteReg(UART, XUARTPS_FIFO_OFFSET, marker[4 - marker_left]);
+            marker_left--;
+            continue;
+        }
+        struct core *c = out_core >= 0 ? &cores[out_core] : 0;
+        if (!c || !has_output(c) || !to_uart(c)) {
+            int k = other_output();
+            if (k < 0)
+                return;
+            out_core = k;
+            if (mux) {
+                marker[0] = SOH; marker[1] = '@'; marker[2] = '0' + k; marker[3] = '\n';
+                marker_left = 4;
+            }
+            continue;
+        }
+        u8 b = c->out_ring[c->out_tail % OUT_SIZE];
+        XUartPs_WriteReg(UART, XUARTPS_FIFO_OFFSET, b);
+        if (b == SOH && !soh_half) {
             soh_half = 1;
             continue;
         }
         soh_half = 0;
-        out_tail++;
+        c->out_tail++;
+        if (b == '\n' && mux) {                     /* a line ended: the other core's turn */
+            int k = other_output();
+            if (k >= 0) {
+                out_core = k;
+                marker[0] = SOH; marker[1] = '@'; marker[2] = '0' + k; marker[3] = '\n';
+                marker_left = 4;
+            }
+        }
     }
 }
 
-/* Forth's output into the output ring and, on the terminal, the ring into the UART (there
-   Forth waits while the ring is full); the autostart feed and the input ring into the RX
-   FIFO */
+/* Forth's output into the output rings and, on the terminal, the rings into the UART
+   (there a core whose output goes to the UART waits while its ring is full); the autostart
+   feed and the input rings into the RX FIFOs */
 static void pump(void)
 {
-    for (int i = 0; i < 64; i++) {
-        if (link_mode == LINK_TERMINAL && out_head - out_tail == OUT_SIZE)
-            break;
-        u32 t = Xil_In32(FORTH_BASE + REG_TX_POP);
-        if (!(t & TX_VALID))
-            break;
-        out_put((u8)t);
+    for (int k = 0; k < ncores; k++) {
+        struct core *c = &cores[k];
+
+        for (int i = 0; i < 64; i++) {
+            if (link_mode == LINK_TERMINAL && to_uart(c) && c->out_head - c->out_tail == OUT_SIZE)
+                break;
+            u32 t = Xil_In32(c->base + REG_TX_POP);
+            if (!(t & TX_VALID))
+                break;
+            out_put(c, (u8)t);
+        }
+        while (c->feed_pos < c->feed_len && c->in_head - c->in_tail < IN_SIZE)
+            c->in_ring[c->in_head++ % IN_SIZE] = c->sector[SOURCE_HEADER + c->feed_pos++];
+        while (c->in_tail != c->in_head && !(Xil_In32(c->base + REG_STATUS) & STATUS_RX_FULL))
+            Xil_Out32(c->base + REG_RX_PUSH, c->in_ring[c->in_tail++ % IN_SIZE]);
     }
     if (link_mode == LINK_TERMINAL)
         uart_send(0);
-    while (feed_pos < feed_len && in_head - in_tail < IN_SIZE)
-        in_ring[in_head++ % IN_SIZE] = sector[SOURCE_HEADER + feed_pos++];
-    while (in_tail != in_head && !(Xil_In32(FORTH_BASE + REG_STATUS) & STATUS_RX_FULL))
-        Xil_Out32(FORTH_BASE + REG_RX_PUSH, in_ring[in_tail++ % IN_SIZE]);
 }
 
 /* sends what Forth printed so far, then blocks on the UART */
@@ -257,131 +341,152 @@ static u32 crc32(const u8 *data, u32 length)
     return ~crc;
 }
 
-/* reads the sector and checks the header and CRC */
-static void source_load(void)
+/* reads the core's sector and checks the header and CRC */
+static void source_load(struct core *c)
 {
-    stored_state = 0;
-    if (!flash_read(FLASH_SOURCE_BASE, sector, sizeof sector))
+    c->stored_state = 0;
+    if (!flash_read(c->flash_base, c->sector, FLASH_SECTOR_SIZE))
         return;
-    memcpy(&stored, sector, sizeof stored);
-    if (stored.magic != SOURCE_MAGIC)
+    memcpy(&c->stored, c->sector, sizeof c->stored);
+    if (c->stored.magic != SOURCE_MAGIC)
         return;
-    stored_state = stored.length <= SOURCE_MAX &&
-                   crc32(sector + SOURCE_HEADER, stored.length) == stored.crc ? 1 : 2;
+    c->stored_state = c->stored.length <= SOURCE_MAX &&
+                      crc32(c->sector + SOURCE_HEADER, c->stored.length) == c->stored.crc ? 1 : 2;
 }
 
-/* writes header + source from sector[] and checks the flash against it */
-static int source_write(u32 length)
+/* writes header + source from the core's sector[] and checks the flash against it */
+static int source_write(struct core *c, u32 length)
 {
     static u8 check[FLASH_SECTOR_SIZE];
 
-    if (!flash_erase_sector(FLASH_SOURCE_BASE) ||
-        !flash_program(FLASH_SOURCE_BASE, sector, SOURCE_HEADER + length) ||
-        !flash_read(FLASH_SOURCE_BASE, check, SOURCE_HEADER + length) ||
-        memcmp(check, sector, SOURCE_HEADER + length)) {
-        source_load();
+    if (!flash_erase_sector(c->flash_base) ||
+        !flash_program(c->flash_base, c->sector, SOURCE_HEADER + length) ||
+        !flash_read(c->flash_base, check, SOURCE_HEADER + length) ||
+        memcmp(check, c->sector, SOURCE_HEADER + length)) {
+        source_load(c);
         return 0;
     }
-    source_load();
-    return stored_state == 1;
+    source_load(c);
+    return c->stored_state == 1;
+}
+
+/* the source in staging[] becomes the core's saved source */
+static int source_commit(struct core *c, u32 length, u32 crc, int autostart)
+{
+    c->stored.magic = SOURCE_MAGIC;
+    c->stored.length = length;
+    c->stored.crc = crc;
+    c->stored.autostart = autostart;
+    memcpy(c->sector, &c->stored, sizeof c->stored);
+    memcpy(c->sector + SOURCE_HEADER, staging, length);
+    return source_write(c, length);
 }
 
 /* ------------------------------------------------------------------------------------ */
 /* Forth                                                                                */
 /* ------------------------------------------------------------------------------------ */
 
-static int load_and_start(int skip_autostart)
+static int load_and_start(struct core *c, int skip_autostart)
 {
-    char text[96];
+    char text[112];
     int i, errors = 0;
 
-    Xil_Out32(FORTH_BASE + REG_CTRL, CTRL_HOLD);    /* hold HF32 in reset, FIFOs cleared */
-    running = 0;
-    in_tail = in_head;
-    feed_pos = feed_len = 0;
-    last_start = "none";
-    Xil_Out32(FORTH_BASE + REG_MEM_ADDR, 0);
+    Xil_Out32(c->base + REG_CTRL, CTRL_HOLD);       /* hold the core in reset, FIFOs cleared */
+    c->running = 0;
+    c->in_tail = c->in_head;
+    c->feed_pos = c->feed_len = 0;
+    c->last_start = "none";
+    Xil_Out32(c->base + REG_MEM_ADDR, 0);
     for (i = 0; i < FORTH_IMAGE_WORDS; i++)
-        Xil_Out32(FORTH_BASE + REG_MEM_DATA, forth_image[i]);
+        Xil_Out32(c->base + REG_MEM_DATA, forth_image[i]);
 
     for (i = 0; i < FORTH_IMAGE_WORDS; i++) {
-        Xil_Out32(FORTH_BASE + REG_MEM_ADDR, i);
-        if (Xil_In32(FORTH_BASE + REG_MEM_DATA) != forth_image[i])
+        Xil_Out32(c->base + REG_MEM_ADDR, i);
+        if (Xil_In32(c->base + REG_MEM_DATA) != forth_image[i])
             errors++;
     }
 
-    starts++;
+    c->starts++;
     if (errors) {
-        snprintf(text, sizeof text, "\r\n[zynq-forth32] kernel image VERIFY FAILED (%d words), "
-                 "CPU stays in reset\r\n", errors);
-        out_put_str(text);
+        snprintf(text, sizeof text, "\r\n[%s] core %d: kernel image VERIFY FAILED (%d words), "
+                 "core stays in reset\r\n", FIRMWARE_NAME, c->index, errors);
+        out_put_str(c, text);
         return 0;
     }
-    snprintf(text, sizeof text, "\r\n[zynq-forth32] %s, kernel %d words loaded and verified\r\n",
-             FIRMWARE_VERSION, FORTH_IMAGE_WORDS);
-    out_put_str(text);
+    snprintf(text, sizeof text, "\r\n[%s] %s, core %d, kernel %d words loaded and verified\r\n",
+             FIRMWARE_NAME, FIRMWARE_VERSION, c->index, FORTH_IMAGE_WORDS);
+    out_put_str(c, text);
 
-    if (stored_state == 1 && stored.autostart) {
+    if (c->stored_state == 1 && c->stored.autostart) {
         if (skip_autostart || (Xil_In32(FORTH_BASE + REG_STATUS) & STATUS_BTN3)) {
-            last_start = "skipped";
-            out_put_str("[zynq-forth32] autostart skipped\r\n");
+            c->last_start = "skipped";
+            snprintf(text, sizeof text, "[%s] autostart skipped\r\n", FIRMWARE_NAME);
+            out_put_str(c, text);
         } else {
-            last_start = "fed";
-            feed_len = stored.length;
-            snprintf(text, sizeof text, "[zynq-forth32] autostart: %lu bytes of saved source\r\n",
-                     (unsigned long)stored.length);
-            out_put_str(text);
+            c->last_start = "fed";
+            c->feed_len = c->stored.length;
+            snprintf(text, sizeof text, "[%s] autostart: %lu bytes of saved source\r\n",
+                     FIRMWARE_NAME, (unsigned long)c->stored.length);
+            out_put_str(c, text);
         }
     }
-    Xil_Out32(FORTH_BASE + REG_CTRL, 0);            /* run */
-    running = 1;
+    Xil_Out32(c->base + REG_CTRL, 0);               /* run */
+    c->running = 1;
     return 1;
 }
 
-static u32 ram_read(u32 byte_address)
+static u32 ram_read(struct core *c, u32 byte_address)
 {
-    Xil_Out32(FORTH_BASE + REG_MEM_ADDR, (byte_address >> 2) & 0x7FFF);
-    return Xil_In32(FORTH_BASE + REG_MEM_DATA);
+    Xil_Out32(c->base + REG_MEM_ADDR, (byte_address >> 2) & 0x7FFF);
+    return Xil_In32(c->base + REG_MEM_DATA);
 }
 
-static u8 ram_byte(u32 byte_address)
+static u8 ram_byte(struct core *c, u32 byte_address)
 {
-    return ram_read(byte_address) >> (8 * (byte_address & 3));
+    return ram_read(c, byte_address) >> (8 * (byte_address & 3));
 }
 
-static void cpu_pause(void)
+static void cpu_pause(struct core *c)
 {
-    Xil_Out32(FORTH_BASE + REG_CTRL, running ? CTRL_PAUSE : CTRL_HOLD);
+    Xil_Out32(c->base + REG_CTRL, c->running ? CTRL_PAUSE : CTRL_HOLD);
 }
 
-static void cpu_resume(void)
+static void cpu_resume(struct core *c)
 {
-    Xil_Out32(FORTH_BASE + REG_CTRL, running ? 0 : CTRL_HOLD);
+    Xil_Out32(c->base + REG_CTRL, c->running ? 0 : CTRL_HOLD);
+}
+
+/* words waiting in the core's mailbox from the other core */
+static u32 mailbox_count(const struct core *c)
+{
+    if (ncores < 2)
+        return 0;
+    return (Xil_In32(FORTH_BASE + REG_CORES) >> (c->index ? 16 : 8)) & 0x3F;
 }
 
 /* reads the stacks QUIT copied at the last prompt; SDEPTH is -1 while the copies are made,
-   so a pause in the middle lets the CPU run 10 us and reads again. The float stack's depth
+   so a pause in the middle lets the core run 10 us and reads again. The float stack's depth
    goes to *fdepth and its items (bits) to fitems, when fitems is given. */
-static int stack_snapshot(u32 *items, u32 *fitems, int *fdepth)
+static int stack_snapshot(struct core *c, u32 *items, u32 *fitems, int *fdepth)
 {
     XTime start, now;
 
     for (int attempt = 0; attempt < 100; attempt++) {
         u32 depth, fd = 0;
 
-        cpu_pause();
-        depth = ram_read(FORTH_SDEPTH_ADDR);
+        cpu_pause(c);
+        depth = ram_read(c, FORTH_SDEPTH_ADDR);
         if (depth <= STACK_MAX) {
             for (u32 i = 0; i < depth; i++)
-                items[i] = ram_read(FORTH_SSNAP_ADDR + 4 * i);
-            fd = ram_read(FORTH_FSDEPTH_ADDR);
+                items[i] = ram_read(c, FORTH_SSNAP_ADDR + 4 * i);
+            fd = ram_read(c, FORTH_FSDEPTH_ADDR);
             if (fd > STACK_MAX)
                 fd = 0;
             if (fitems)
                 for (u32 i = 0; i < fd; i++)
-                    fitems[i] = ram_read(FORTH_FSSNAP_ADDR + 4 * i);
+                    fitems[i] = ram_read(c, FORTH_FSSNAP_ADDR + 4 * i);
         }
-        cpu_resume();
+        cpu_resume(c);
         if (depth <= STACK_MAX) {
             if (fdepth)
                 *fdepth = fd;
@@ -423,40 +528,41 @@ static void refuse(const char *name, const char *reason)
 static void request_version(void)
 {
     int n = snprintf((char *)reply, sizeof reply,
-                     "firmware %s %s\nprotocol %d\nkernel %d %04X\ncell 32\nfloat 32\n",
+                     "firmware %s %s\nprotocol %d\nkernel %d %04X\ncell 32\nfloat 32\ncores %d\n",
                      FIRMWARE_NAME, FIRMWARE_VERSION, PROTOCOL_VERSION, FORTH_IMAGE_WORDS,
-                     image_checksum);
+                     image_checksum, ncores);
     answer("version", reply, n);
 }
 
-static void request_status(void)
+static void request_status(struct core *c)
 {
-    u32 pending = (in_head - in_tail) + (feed_len - feed_pos);
+    u32 pending = (c->in_head - c->in_tail) + (c->feed_len - c->feed_pos);
     int n = snprintf((char *)reply, sizeof reply,
                      "state %s\npc %04lX\ninput %lu\nstarts %u\nsource %s\nlength %lu\n"
-                     "crc %08lX\nautostart %s\nlast %s\n",
-                     running ? "running" : "held",
-                     (unsigned long)((Xil_In32(FORTH_BASE + REG_STATUS) >> 16) & PC_MASK),
-                     (unsigned long)pending, starts,
-                     stored_state == 1 ? "stored" : stored_state == 2 ? "damaged" : "none",
-                     (unsigned long)(stored_state == 1 ? stored.length : 0),
-                     (unsigned long)(stored_state == 1 ? stored.crc : 0),
-                     stored_state == 1 && stored.autostart ? "on" : "off", last_start);
+                     "crc %08lX\nautostart %s\nlast %s\ncore %d\nmailbox %lu\n",
+                     c->running ? "running" : "held",
+                     (unsigned long)((Xil_In32(c->base + REG_STATUS) >> 16) & PC_MASK),
+                     (unsigned long)pending, c->starts,
+                     c->stored_state == 1 ? "stored" : c->stored_state == 2 ? "damaged" : "none",
+                     (unsigned long)(c->stored_state == 1 ? c->stored.length : 0),
+                     (unsigned long)(c->stored_state == 1 ? c->stored.crc : 0),
+                     c->stored_state == 1 && c->stored.autostart ? "on" : "off", c->last_start,
+                     c->index, (unsigned long)mailbox_count(c));
     answer("status", reply, n);
 }
 
-/* walks the header list while the CPU is paused; links must point downwards */
-static void request_words(void)
+/* walks the header list while the core is paused; links must point downwards */
+static void request_words(struct core *c)
 {
     u32 n, h;
 
-    cpu_pause();
+    cpu_pause(c);
     n = snprintf((char *)reply, sizeof reply, "here %05lX\n",
-                 (unsigned long)ram_read(FORTH_DP_ADDR));
-    for (h = ram_read(FORTH_LATEST_ADDR); h != 0 && n < sizeof reply - 64; ) {
-        u8 count = ram_byte(h + 4);
+                 (unsigned long)ram_read(c, FORTH_DP_ADDR));
+    for (h = ram_read(c, FORTH_LATEST_ADDR); h != 0 && n < sizeof reply - 64; ) {
+        u8 count = ram_byte(c, h + 4);
         u8 length = count & 0x1F;
-        u32 link = ram_read(h);
+        u32 link = ram_read(c, h);
         char flags[4];
         int f = 0;
 
@@ -468,21 +574,21 @@ static void request_words(void)
         n += snprintf((char *)reply + n, sizeof reply - n, "%05lX %s ",
                       (unsigned long)((h + 5 + length + 3) & ~3u), flags);
         for (int k = 0; k < length; k++)
-            reply[n++] = ram_byte(h + 5 + k);
+            reply[n++] = ram_byte(c, h + 5 + k);
         reply[n++] = '\n';
         if (link >= h)
             break;
         h = link;
     }
-    cpu_resume();
+    cpu_resume(c);
     answer("words", reply, n);
 }
 
 /* line 1: depth and cells, line 2: "f", the float stack's depth and its items' bits */
-static void request_stack(void)
+static void request_stack(struct core *c)
 {
     u32 items[STACK_MAX], fitems[STACK_MAX];
-    int fdepth, depth = stack_snapshot(items, fitems, &fdepth);
+    int fdepth, depth = stack_snapshot(c, items, fitems, &fdepth);
     u32 n;
 
     if (depth < 0) {
@@ -531,12 +637,12 @@ static void request_board(void)
     answer("board", reply, n);
 }
 
-static void request_source(void)
+static void request_source(struct core *c)
 {
-    if (stored_state != 1)
-        refuse("source", stored_state == 2 ? "damaged" : "none");
+    if (c->stored_state != 1)
+        refuse("source", c->stored_state == 2 ? "damaged" : "none");
     else
-        answer("source", sector + SOURCE_HEADER, stored.length);
+        answer("source", c->sector + SOURCE_HEADER, c->stored.length);
 }
 
 static void finish_store(void)
@@ -546,56 +652,106 @@ static void finish_store(void)
         return;
     }
     send_flush();                                   /* the flash takes up to ~3 s */
-    stored.magic = SOURCE_MAGIC;
-    stored.length = payload_len;
-    stored.crc = payload_crc;
-    stored.autostart = payload_auto;
-    memcpy(sector, &stored, sizeof stored);
-    memcpy(sector + SOURCE_HEADER, staging, payload_len);
-    if (source_write(payload_len))
+    if (source_commit(payload_core, payload_len, payload_crc, payload_auto))
         answer("store", 0, 0);
     else
         refuse("store", "flash");
 }
 
-/* splits the line into at most four words */
-static int split(char *s, char *argv[4])
+/* splits the line into at most six words */
+static int split(char *s, char *argv[6])
 {
     int argc = 0;
 
-    for (char *t = strtok(s, " \t"); t && argc < 4; t = strtok(0, " \t"))
+    for (char *t = strtok(s, " \t"); t && argc < 6; t = strtok(0, " \t"))
         argv[argc++] = t;
     return argc;
 }
 
+static int digits(const char *s)
+{
+    if (!*s)
+        return 0;
+    for (; *s; s++)
+        if (*s < '0' || *s > '9')
+            return 0;
+    return 1;
+}
+
+/* the core a per-core request names with its last word (and removes it), core 0 without
+   one; 0 when that core does not exist */
+static struct core *core_arg(int *argc, char *argv[])
+{
+    int k = 0;
+
+    if (*argc >= 2 && digits(argv[*argc - 1])) {
+        k = atoi(argv[*argc - 1]);
+        (*argc)--;
+    }
+    return k < ncores ? &cores[k] : 0;
+}
+
+static int per_core(const char *name)
+{
+    static const char *const names[] = {
+        "status", "restart", "words", "stack", "source", "store", "erase", "autostart", 0
+    };
+    for (int i = 0; names[i]; i++)
+        if (!strcmp(name, names[i]))
+            return 1;
+    return 0;
+}
+
 static void request(char *text)
 {
-    char *argv[4];
+    char *argv[6];
     int argc = split(text, argv);
+    struct core *c = c0;
     char *end;
 
     if (argc == 0)
         return;
+    if (per_core(argv[0]) && !(c = core_arg(&argc, argv))) {
+        refuse(argv[0], "core");
+        return;
+    }
     if (!strcmp(argv[0], "echo")) {
         answer("echo", argc > 1 ? argv[1] : "", argc > 1 ? strlen(argv[1]) : 0);
     } else if (!strcmp(argv[0], "version")) {
         request_version();
     } else if (!strcmp(argv[0], "status")) {
-        request_status();
+        request_status(c);
     } else if (!strcmp(argv[0], "restart")) {
         int skip = argc > 1 && !strcmp(argv[1], "skip");
-        if (load_and_start(skip))
+        if (load_and_start(c, skip))
             answer("restart", 0, 0);
         else
             refuse("restart", "verify");
     } else if (!strcmp(argv[0], "words")) {
-        request_words();
+        request_words(c);
     } else if (!strcmp(argv[0], "stack")) {
-        request_stack();
+        request_stack(c);
     } else if (!strcmp(argv[0], "board")) {
         request_board();
     } else if (!strcmp(argv[0], "source")) {
-        request_source();
+        request_source(c);
+    } else if (!strcmp(argv[0], "input")) {
+        if (argc != 2 || !digits(argv[1]) || atoi(argv[1]) >= ncores) {
+            refuse("input", "core");
+            return;
+        }
+        input_core = atoi(argv[1]);
+        answer("input", 0, 0);
+    } else if (!strcmp(argv[0], "mux")) {
+        if (argc != 2 || (strcmp(argv[1], "on") && strcmp(argv[1], "off"))) {
+            refuse("mux", "args");
+            return;
+        }
+        answer("mux", 0, 0);                        /* what is due goes out before it */
+        mux = !strcmp(argv[1], "on");
+        /* with mux on, the first output after the answer has a marker, whoever's it is (so a
+           client never has to guess); with mux off only core 0's goes out, unmarked */
+        out_core = mux ? -1 : 0;
     } else if (!strcmp(argv[0], "store")) {
         if (argc != 4) {
             refuse("store", "args");
@@ -604,6 +760,7 @@ static void request(char *text)
         payload_len = strtoul(argv[1], &end, 10);
         payload_crc = strtoul(argv[2], 0, 16);
         payload_auto = !strcmp(argv[3], "on");
+        payload_core = c;
         if (*end || payload_len > SOURCE_MAX) {
             refuse("store", "length");
             return;
@@ -615,20 +772,20 @@ static void request(char *text)
             finish_store();
     } else if (!strcmp(argv[0], "erase")) {
         send_flush();
-        if (flash_erase_sector(FLASH_SOURCE_BASE) && (source_load(), stored_state == 0))
+        if (flash_erase_sector(c->flash_base) && (source_load(c), c->stored_state == 0))
             answer("erase", 0, 0);
         else
             refuse("erase", "flash");
     } else if (!strcmp(argv[0], "autostart")) {
         if (argc != 2 || (strcmp(argv[1], "on") && strcmp(argv[1], "off"))) {
             refuse("autostart", "args");
-        } else if (stored_state != 1) {
+        } else if (c->stored_state != 1) {
             refuse("autostart", "none");
         } else {
             send_flush();
-            stored.autostart = !strcmp(argv[1], "on");
-            memcpy(sector, &stored, sizeof stored);
-            if (source_write(stored.length))
+            c->stored.autostart = !strcmp(argv[1], "on");
+            memcpy(c->sector, &c->stored, sizeof c->stored);
+            if (source_write(c, c->stored.length))
                 answer("autostart", 0, 0);
             else
                 refuse("autostart", "flash");
@@ -651,34 +808,37 @@ static void receive_timeout(void)
     }
 }
 
-/* one byte from the terminal: input for Forth, or part of a service request */
-static void terminal_receive(u8 c)
+/* one byte from the terminal: input for the core the input points at, or part of a
+   service request */
+static void terminal_receive(u8 b)
 {
+    struct core *c = &cores[input_core];
+
     receive_timeout();
     XTime_GetTime(&rx_last);
 
     switch (rx_mode) {
     case TERMINAL:
-        if (c == SOH) {
+        if (b == SOH) {
             rx_mode = LINE;
             line_len = 0;
-        } else if (c == CTRL_R) {
-            load_and_start(0);
-        } else if (in_head - in_tail < IN_SIZE) {
-            in_ring[in_head++ % IN_SIZE] = c;
+        } else if (b == CTRL_R) {
+            load_and_start(c, 0);
+        } else if (c->in_head - c->in_tail < IN_SIZE) {
+            c->in_ring[c->in_head++ % IN_SIZE] = b;
         }
         break;
     case LINE:
-        if (c == '\n') {
+        if (b == '\n') {
             line[line_len] = 0;
             rx_mode = TERMINAL;
             request(line);
-        } else if (c != '\r' && line_len < LINE_MAX) {
-            line[line_len++] = c;
+        } else if (b != '\r' && line_len < LINE_MAX) {
+            line[line_len++] = b;
         }
         break;
     case PAYLOAD:
-        staging[payload_pos++] = c;
+        staging[payload_pos++] = b;
         if (payload_pos == payload_len) {
             rx_mode = TERMINAL;
             finish_store();
@@ -688,7 +848,7 @@ static void terminal_receive(u8 c)
 }
 
 /* ------------------------------------------------------------------------------------ */
-/* HASE node (MCNF device functions, HASE-Lab Hase.Mcnf.ForthLab)                       */
+/* HASE node (MCNF device functions, HASE-Lab Hase.Mcnf.ForthLab): core 0               */
 /* ------------------------------------------------------------------------------------ */
 
 static u32 read_u32(const u8 *b)
@@ -709,31 +869,31 @@ static u16 addr16(u32 address)
     return address > 0xFFFF ? 0xFFFF : address;
 }
 
-/* walks the header list while the CPU is paused; links must point downwards */
+/* walks core 0's header list while it is paused; links must point downwards */
 static void dict_snapshot(void)
 {
     u32 h;
 
-    cpu_pause();
-    dict_latest = ram_read(FORTH_LATEST_ADDR);
-    dict_here = ram_read(FORTH_DP_ADDR);
+    cpu_pause(c0);
+    dict_latest = ram_read(c0, FORTH_LATEST_ADDR);
+    dict_here = ram_read(c0, FORTH_DP_ADDR);
     dict_count = 0;
     for (h = dict_latest; h != 0 && dict_count < DICT_MAX; ) {
-        u8 count = ram_byte(h + 4);
+        u8 count = ram_byte(c0, h + 4);
         u8 length = count & 0x1F;
-        u32 link_to = ram_read(h);
+        u32 link_to = ram_read(c0, h);
 
         dict[dict_count].flags = count & 0xE0;
         dict[dict_count].length = length;
         for (int k = 0; k < length; k++)
-            dict[dict_count].name[k] = ram_byte(h + 5 + k);
+            dict[dict_count].name[k] = ram_byte(c0, h + 5 + k);
         dict[dict_count].xt = (h + 5 + length + 3) & ~3u;
         dict_count++;
         if (link_to >= h)
             break;
         h = link_to;
     }
-    cpu_resume();
+    cpu_resume(c0);
 }
 
 static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_length,
@@ -751,18 +911,18 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         return MCNF_ERR_NONE;
 
     case FN_STATUS:
-        n = (in_head - in_tail) + (feed_len - feed_pos);
-        payload[0] = running;
-        mcnf_write_u16(payload + 1, (Xil_In32(FORTH_BASE + REG_STATUS) >> 16) & PC_MASK);
+        n = (c0->in_head - c0->in_tail) + (c0->feed_len - c0->feed_pos);
+        payload[0] = c0->running;
+        mcnf_write_u16(payload + 1, (Xil_In32(c0->base + REG_STATUS) >> 16) & PC_MASK);
         mcnf_write_u16(payload + 3, n > 0xFFFF ? 0xFFFF : n);
-        mcnf_write_u16(payload + 5, out_head - out_tail);
-        mcnf_write_u32(payload + 7, out_dropped);
-        mcnf_write_u16(payload + 11, starts);
-        payload[13] = (stored_state == 1 ? AUTO_STORED : 0) |
-                      (stored_state == 1 && stored.autostart ? AUTO_ON : 0) |
-                      (!strcmp(last_start, "fed") ? AUTO_FED : 0) |
-                      (!strcmp(last_start, "skipped") ? AUTO_SKIPPED : 0);
-        mcnf_write_u32(payload + 14, stored_state == 1 ? stored.length : 0);
+        mcnf_write_u16(payload + 5, c0->out_head - c0->out_tail);
+        mcnf_write_u32(payload + 7, c0->out_dropped);
+        mcnf_write_u16(payload + 11, c0->starts);
+        payload[13] = (c0->stored_state == 1 ? AUTO_STORED : 0) |
+                      (c0->stored_state == 1 && c0->stored.autostart ? AUTO_ON : 0) |
+                      (!strcmp(c0->last_start, "fed") ? AUTO_FED : 0) |
+                      (!strcmp(c0->last_start, "skipped") ? AUTO_SKIPPED : 0);
+        mcnf_write_u32(payload + 14, c0->stored_state == 1 ? c0->stored.length : 0);
         *payload_length = 18;
         return MCNF_ERR_NONE;
 
@@ -770,17 +930,17 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         if (param_length > 1)
             return MCNF_ERR_VARIABLE_DATA;
         *payload_length = 0;
-        return load_and_start(param_length && (params[0] & 1))
+        return load_and_start(c0, param_length && (params[0] & 1))
                ? MCNF_ERR_NONE : FORTH_ERR_IMAGE_VERIFY;
 
     case FN_INPUT:
         if (param_length == 0)
             return MCNF_ERR_VARIABLE_DATA;
-        n = IN_SIZE - (in_head - in_tail);
+        n = IN_SIZE - (c0->in_head - c0->in_tail);
         if (n > param_length)
             n = param_length;
         for (i = 0; i < n; i++)
-            in_ring[in_head++ % IN_SIZE] = params[i];
+            c0->in_ring[c0->in_head++ % IN_SIZE] = params[i];
         payload[0] = n;
         *payload_length = 1;
         return MCNF_ERR_NONE;
@@ -788,12 +948,12 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     case FN_OUTPUT:
         if (response_length < 3)
             return FORTH_ERR_RESPONSE_LENGTH;
-        n = out_head - out_tail;
+        n = c0->out_head - c0->out_tail;
         if (n > response_length - 3u)
             n = response_length - 3u;
         payload[0] = n;
         for (i = 0; i < n; i++)
-            payload[1 + i] = out_ring[out_tail++ % OUT_SIZE];
+            payload[1 + i] = c0->out_ring[c0->out_tail++ % OUT_SIZE];
         for (; i < response_length - 3u; i++)
             payload[1 + i] = 0;
         *payload_length = response_length - 2;
@@ -844,7 +1004,7 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     /* the data stack as the 16-bit Forth-Lab reads it: cells clipped to -32768..32767 */
     case FN_DATA_STACK: {
         u32 items[STACK_MAX];
-        int depth = stack_snapshot(items, 0, 0);
+        int depth = stack_snapshot(c0, items, 0, 0);
 
         if (depth < 0)
             return ERR_STACK_BUSY;
@@ -860,7 +1020,7 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     case FN_DATA_STACK32:
     case FN_FLOAT_STACK: {
         u32 items[STACK_MAX], fitems[STACK_MAX];
-        int fdepth, depth = stack_snapshot(items, fitems, &fdepth);
+        int fdepth, depth = stack_snapshot(c0, items, fitems, &fdepth);
         int float_stack = function == FN_FLOAT_STACK;
 
         if (depth < 0)
@@ -903,10 +1063,10 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         return MCNF_ERR_NONE;
 
     case FN_SOURCE_INFO:
-        payload[0] = stored_state;
-        payload[1] = stored_state == 1 && stored.autostart;
-        mcnf_write_u32(payload + 2, stored_state ? stored.length : 0);
-        mcnf_write_u32(payload + 6, stored_state ? stored.crc : 0);
+        payload[0] = c0->stored_state;
+        payload[1] = c0->stored_state == 1 && c0->stored.autostart;
+        mcnf_write_u32(payload + 2, c0->stored_state ? c0->stored.length : 0);
+        mcnf_write_u32(payload + 6, c0->stored_state ? c0->stored.crc : 0);
         *payload_length = 10;
         return MCNF_ERR_NONE;
 
@@ -929,14 +1089,9 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
             return MCNF_ERR_VARIABLE_DATA;
         if (crc32(staging, length) != read_u32(params + 4))
             return ERR_SOURCE_CRC;
-        stored.magic = SOURCE_MAGIC;
-        stored.length = length;
-        stored.crc = read_u32(params + 4);
-        stored.autostart = params[8] ? 1 : 0;
-        memcpy(sector, &stored, sizeof stored);
-        memcpy(sector + SOURCE_HEADER, staging, length);
         *payload_length = 0;
-        return source_write(length) ? MCNF_ERR_NONE : ERR_FLASH;
+        return source_commit(c0, length, read_u32(params + 4), params[8] ? 1 : 0)
+               ? MCNF_ERR_NONE : ERR_FLASH;
 
     case FN_SOURCE_READ:
         if (param_length != 4)
@@ -945,26 +1100,26 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         n = response_length - 2u;
         if (offset > SOURCE_MAX || n > SOURCE_MAX - offset)
             return MCNF_ERR_VARIABLE_DATA;
-        memcpy(payload, sector + SOURCE_HEADER + offset, n);
+        memcpy(payload, c0->sector + SOURCE_HEADER + offset, n);
         *payload_length = n;
         return MCNF_ERR_NONE;
 
     case FN_SOURCE_ERASE:
         *payload_length = 0;
-        if (!flash_erase_sector(FLASH_SOURCE_BASE))
+        if (!flash_erase_sector(c0->flash_base))
             return ERR_FLASH;
-        source_load();
-        return stored_state == 0 ? MCNF_ERR_NONE : ERR_FLASH;
+        source_load(c0);
+        return c0->stored_state == 0 ? MCNF_ERR_NONE : ERR_FLASH;
 
     case FN_AUTOSTART_SET:
         if (param_length != 1)
             return MCNF_ERR_VARIABLE_DATA;
-        if (stored_state != 1)
+        if (c0->stored_state != 1)
             return ERR_NO_SOURCE;
-        stored.autostart = params[0] ? 1 : 0;
-        memcpy(sector, &stored, sizeof stored);
+        c0->stored.autostart = params[0] ? 1 : 0;
+        memcpy(c0->sector, &c0->stored, sizeof c0->stored);
         *payload_length = 0;
-        return source_write(stored.length) ? MCNF_ERR_NONE : ERR_FLASH;
+        return source_write(c0, c0->stored.length) ? MCNF_ERR_NONE : ERR_FLASH;
 
     default:
         return MCNF_ERR_UNKNOWN_FUNCTION;
@@ -982,7 +1137,7 @@ static int terminal_byte(u8 c)
            (c >= 0x20 && c <= 0x7F);
 }
 
-/* back to the terminal: what Forth printed meanwhile goes out from the ring */
+/* back to the terminal: what Forth printed meanwhile goes out from the rings */
 static void to_terminal(void)
 {
     link_mode = LINK_TERMINAL;
@@ -1034,6 +1189,14 @@ int main(void)
 
     for (int i = 0; i < FORTH_IMAGE_WORDS; i++)
         image_checksum += forth_image[i];
+    for (int k = 0; k < MAX_CORES; k++) {
+        cores[k].sector = k ? sector1 : sector0;
+        cores[k].last_start = "none";
+    }
+    /* the dual-core logic reads 2 here; a single-core bitstream reads 0, and there core 1's
+       register addresses would reach core 0's */
+    if ((Xil_In32(FORTH_BASE + REG_CORES) & 0xFF) == MAX_CORES)
+        ncores = MAX_CORES;
 
     /* the buttons are sampled every 10 ms; let BTN3 settle before deciding the autostart */
     XTime_GetTime(&start);
@@ -1042,8 +1205,10 @@ int main(void)
     while (now - start < COUNTS_PER_SECOND / 20);
 
     if (flash_init())
-        source_load();
-    load_and_start(0);
+        for (int k = 0; k < ncores; k++)
+            source_load(&cores[k]);
+    for (int k = 0; k < ncores; k++)
+        load_and_start(&cores[k], 0);
     mcnf_init(device);
 
     for (;;) {

@@ -2,7 +2,11 @@
 // as the ARM bridge: pushes the input file into the RX FIFO and prints the TX FIFO.
 // Meanwhile it pauses the CPU at random moments to read RAM (the ARM's dictionary path),
 // and finally walks the dictionary while paused.
-// Plusargs: +image=<forth.hex> +input=<text file>
+// With a second input file (default input1.txt; none = single core) core 1 runs too, the
+// same image in its own RAM: the bridge serves both cores, core 1's output goes to
+// core1.txt.
+// Plusargs: +image=<forth.hex> +input=<text file> +input1=<text file for core 1>
+//           +timeout_ms=<simulated ms, default 200>: stop with [tb] TIMEOUT
 
 `timescale 1ns / 1ps
 
@@ -15,7 +19,7 @@ module tb;
     wire [15:0] pmod;
 
     reg         aresetn = 1'b0;
-    reg  [5:0]  awaddr = 0, araddr = 0;
+    reg  [6:0]  awaddr = 0, araddr = 0;
     reg         awvalid = 0, wvalid = 0, bready = 1, arvalid = 0, rready = 1;
     reg  [31:0] wdata = 0;
     wire        awready, wready, bvalid, arready, rvalid;
@@ -46,7 +50,7 @@ module tb;
     );
 
     // TB drives on the falling edge; the DUT samples on the rising edge
-    task axi_write(input [5:0] a, input [31:0] d);
+    task axi_write(input [6:0] a, input [31:0] d);
         begin
             @(negedge clk);
             awaddr = a; wdata = d; awvalid = 1; wvalid = 1;
@@ -57,7 +61,7 @@ module tb;
         end
     endtask
 
-    task axi_read(input [5:0] a, output [31:0] d);
+    task axi_read(input [6:0] a, output [31:0] d);
         begin
             @(negedge clk);
             araddr = a; arvalid = 1;
@@ -76,10 +80,12 @@ module tb;
     integer      pauses = 0, words, h, k, len;
     reg [8*32-1:0] newest;
 
+    reg [6:0] cb = 7'h00;                  // the core's register offset: 0 or $40
+
     task ram_read(input [31:0] byte_addr, output [31:0] w);
         begin
-            axi_write(6'h04, byte_addr[16:2]);
-            axi_read(6'h08, word);
+            axi_write(cb | 7'h04, byte_addr[16:2]);
+            axi_read(cb | 7'h08, word);
             w = word;
         end
     endtask
@@ -92,11 +98,11 @@ module tb;
 
     task pause_peek;
         begin
-            axi_write(6'h00, 32'd2);
+            axi_write(cb | 7'h00, 32'd2);
             repeat ($unsigned($random) % 3) @(negedge clk);
             ram_read(latest_addr[0], w16);
             ram_read(w16, w16);            // the newest header's link
-            axi_write(6'h00, 32'd0);
+            axi_write(cb | 7'h00, 32'd0);
             pauses = pauses + 1;
         end
     endtask
@@ -172,19 +178,66 @@ module tb;
             pg_prev = pmod[0] === 1'b1;
         end
 
-    reg [1023:0] image_file, input_file;
-    integer      fd, c, idle;
+    reg [1023:0] image_file, input_file, input1_file;
+    integer      fd, fd1, out1, c, c1, idle, core, timeout_ms;
+    reg          two = 1'b0;
     reg [31:0]   status, tx;
+    integer      waits0 = 0, waits1 = 0;    // clocks a core waited for the I/O bus
+
+    // simulated time limit: a test that waits for something that never comes ends here
+    initial begin
+        if (!$value$plusargs("timeout_ms=%d", timeout_ms)) timeout_ms = 200;
+        #(timeout_ms * 1000000.0);
+        $display("\n[tb] TIMEOUT after %0d ms simulated, pc=%h", timeout_ms, dut.pc0);
+        $finish;
+    end
+
+    // feed core cb one byte if it has room; c is the next byte of its file
+    task feed(inout integer ch, input integer f);
+        begin
+            if (ch != 13)
+                axi_write(cb | 7'h10, (ch == 10) ? 32'd13 : ch);
+            ch = $fgetc(f);
+        end
+    endtask
+
+    task walk_dictionary;
+        begin
+            axi_write(cb | 7'h00, 32'd2);
+            ram_read(latest_addr[0], w16);
+            h = w16;
+            words = 0;
+            newest = 0;
+            while (h != 0) begin
+                ram_read(h + 4, w16);
+                len = byte_of(w16, h + 4) & 31;
+                if (words == 0)
+                    for (k = 0; k < len; k = k + 1) begin
+                        ram_read(h + 5 + k, w16);
+                        newest = {newest[8*31-1:0], byte_of(w16, h + 5 + k)};
+                    end
+                ram_read(h, w16);
+                h = w16;
+                words = words + 1;
+            end
+            axi_write(cb | 7'h00, 32'd0);
+        end
+    endtask
 
     initial begin
         if (!$value$plusargs("image=%s", image_file)) image_file = "forth.hex";
         if (!$value$plusargs("input=%s", input_file)) input_file = "input.txt";
-        $readmemh(image_file, dut.ram);
+        if (!$value$plusargs("input1=%s", input1_file)) input1_file = "input1.txt";
+        fd1 = $fopen(input1_file, "r");
+        two = fd1 != 0;
+        $readmemh(image_file, dut.n0.ram);
+        if (two) $readmemh(image_file, dut.n1.ram);
         $readmemh("latest.hex", latest_addr);
 
         repeat (5) @(posedge clk);
         aresetn = 1'b1;
-        axi_write(6'h00, 32'd0);           // release the CPU
+        axi_write(7'h00, 32'd0);           // release core 0
+        if (two) axi_write(7'h40, 32'd0);  // and core 1
 
         fd = $fopen(input_file, "r");
         if (fd == 0) begin
@@ -192,48 +245,51 @@ module tb;
             $finish;
         end
         c = $fgetc(fd);
+        c1 = -1;
+        if (two) begin
+            out1 = $fopen("core1.txt", "w");
+            c1 = $fgetc(fd1);
+        end
         idle = 0;
+        core = 0;
 
-        // Bridge loop: drain TX first, then feed one input byte when RX has room
+        // Bridge loop: per core in turn, drain TX first, then feed one input byte when RX
+        // has room
         while (idle < 200000) begin
+            cb = core ? 7'h40 : 7'h00;
             if ($unsigned($random) % 4 == 0)
                 pause_peek;
-            axi_read(6'h14, status);
+            axi_read(cb | 7'h14, status);
             if (status[1]) begin
-                axi_read(6'h0C, tx);
-                if (tx[8]) $write("%c", tx[7:0]);
+                axi_read(cb | 7'h0C, tx);
+                if (tx[8]) begin
+                    if (core) $fwrite(out1, "%c", tx[7:0]);
+                    else      $write("%c", tx[7:0]);
+                end
                 idle = 0;
-            end else if (c != -1 && !status[0]) begin
-                if (c != 13)
-                    axi_write(6'h10, (c == 10) ? 32'd13 : c);
-                c = $fgetc(fd);
+            end else if (core == 0 && c != -1 && !status[0]) begin
+                feed(c, fd);
                 idle = 0;
-            end else if (c == -1) begin
+            end else if (core == 1 && c1 != -1 && !status[0]) begin
+                feed(c1, fd1);
+                idle = 0;
+            end else if (c == -1 && c1 == -1) begin
                 idle = idle + 1;
             end
+            if (two) core = 1 - core;
         end
 
         // Dictionary walk while paused, as the ARM program does it
-        axi_write(6'h00, 32'd2);
-        ram_read(latest_addr[0], w16);
-        h = w16;
-        words = 0;
-        newest = 0;
-        while (h != 0) begin
-            ram_read(h + 4, w16);
-            len = byte_of(w16, h + 4) & 31;
-            if (words == 0)
-                for (k = 0; k < len; k = k + 1) begin
-                    ram_read(h + 5 + k, w16);
-                    newest = {newest[8*31-1:0], byte_of(w16, h + 5 + k)};
-                end
-            ram_read(h, w16);
-            h = w16;
-            words = words + 1;
-        end
-        axi_write(6'h00, 32'd0);
-
+        cb = 7'h00;
+        walk_dictionary;
         $display("\n[tb] %0d pauses; dictionary: %0d words, newest %0s", pauses, words, newest);
+        if (two) begin
+            cb = 7'h40;
+            walk_dictionary;
+            $fwrite(out1, "\n[tb] core 1 dictionary: %0d words, newest %0s\n", words, newest);
+            $fclose(out1);
+            $display("[tb] I/O arbiter: core 0 waited %0d, core 1 waited %0d clocks", waits0, waits1);
+        end
         if (pwm_clocks)
             $display("[tb] pwm 0 on IO3: %0d clocks, %0d high, %0d rising edges; pulses %0d..%0d, periods %0d..%0d clocks",
                      pwm_clocks, pwm_high, pwm_rises, pwm_wmin, pwm_wmax, pwm_pmin, pwm_pmax);
@@ -244,8 +300,15 @@ module tb;
         if (pg_ticks)
             $display("[tb] pattern generator, channel 0: %0d ticks, %0d rising edges; pulses %0d..%0d, periods %0d..%0d ticks",
                      pg_ticks, pg_rises, pg_wmin, pg_wmax, pg_pmin, pg_pmax);
+        cb = 7'h00;
+        axi_read(7'h14, status);
         $display("[tb] done at %0t ns, leds=%b, pc=%h", $time, led, status[30:16]);
         $finish;
+    end
+
+    always @(posedge clk) begin
+        if (dut.lost_q[0] || dut.stall_st0) waits0 = waits0 + 1;
+        if (dut.lost_q[1] || dut.stall_st1) waits1 = waits1 + 1;
     end
 
 endmodule

@@ -24,6 +24,14 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   Checked with `tools/test_fpu.py` (model against exact division), `sim/run_mcu.ps1` (RTL
   against the model) and the new `sim/run_regress.ps1` (RTL = ISS on `smoke`, the new
   `divide`, `float` and `manual_checks`).
+- **Second HF32 core** in the logic (step 3, part 1): `rtl/hf32_node.v` is one core with its
+  own 128 KB RAM and terminal FIFOs, and `forth_system` holds two of them on one shared I/O bus.
+  When both cores use the I/O in the same clock, an arbiter holds one core for a clock or two,
+  taking turns. New I/O register `$10001C`, the core number. AXI: core 1's registers at
+  0x40..0x54, the number of cores at 0x3C. Core 1 stays held until the ARM releases it, so
+  firmware 3.1 still runs on this logic as a single core. Checked with the new
+  `sim/run_dual.ps1` (both cores at once, each against the simulator's `--core n`) and
+  single-core `smoke`/`divide`; 12,485 LUTs, 73 block RAMs, timing met (0.9 ns at 50 MHz).
 
 ## ZYNQ-FPGA-FORTH32
 

@@ -89,7 +89,8 @@ What happens when `2 3 + .` and Enter are typed in the app:
 |---|---|
 | `rtl/hf32_cpu.v` | the HF32 CPU: decoder, stacks, ALU, next-state logic, memory ports |
 | `rtl/hf32_mcu.v` | the multi-cycle unit: 32 × 32 multiplier and the IEEE single-precision FPU |
-| `rtl/forth_system.v` | the system around the CPU: RAM, I/O decode, FIFOs, timers, shield pins, pin router, AXI-Lite slave |
+| `rtl/forth_system.v` | the system around the cores: the I/O bus and its arbiter, I/O decode, timers, shield pins, pin router, AXI-Lite slave |
+| `rtl/hf32_node.v` | one core with its own RAM and terminal FIFOs (instantiated twice) |
 | `rtl/pwm.v`, `uart.v`, `spi.v`, `i2c.v`, `dds.v`, `tone.v`, `xadc_scan.v`, `patgen.v`, `fifo.v` | the peripherals |
 | `constr/pins.xdc`, `hw/build_hw.tcl` | pin constraints; the Vivado build (block design, bitstream, `.xsa`) |
 | `forth/kernel.fs` | the Forth kernel (905 lines of Forth) |
@@ -133,39 +134,39 @@ clock and that the compiler never has to schedule around anything except the sto
 
 ### 2.2 Resources used
 
-From the implementation report of the single-core design with the hardware divider
-(ZYNQ-DualCore-FORTH32 step 2, `build/hw/utilization.rpt`); the divider added 335 LUTs and 149
-flip-flops to release 3.1, no block RAM and no DSP:
+From the implementation report of the two-core design (ZYNQ-DualCore-FORTH32 step 3, part 1:
+two cores side by side, `build/hw/utilization.rpt`). The single core with the divider
+(step 2) used 8,321 LUTs, 4,409 flip-flops, 41 block RAMs and 15 DSPs; the second core with its
+RAM, FIFOs and the I/O arbiter added 4,164 LUTs, 688 flip-flops, 32 block RAMs and 6 DSPs:
 
 | Resource | Used | Available | % | Mostly in |
 |---|---|---|---|---|
-| Slice LUTs | 8,321 | 53,200 | 15.6 | CPU datapath, FPU, divider, peripherals, pin router |
-| of which LUT RAM | 274 | 17,400 | 1.6 | the three 32-entry stacks (the data stack with a second read port for NN), FIFOs |
-| Flip-flops | 4,409 | 106,400 | 4.1 | |
-| Slices | 2,821 | 13,300 | 21.2 | |
-| Block RAM (36 Kb) | 41 | 140 | 29.3 | 32 for the 128 KB Forth RAM, 9 for the pattern memory |
-| DSP48 | 15 | 220 | 6.8 | 32 × 32 multiplier, FPU significand multiplier, PWM duty products, tone volume |
+| Slice LUTs | 12,485 | 53,200 | 23.5 | two CPU datapaths with FPU and divider, peripherals, pin router |
+| of which LUT RAM | 374 | 17,400 | 2.1 | each core's three 32-entry stacks, FIFOs |
+| Flip-flops | 5,097 | 106,400 | 4.8 | |
+| Slices | 4,026 | 13,300 | 30.3 | |
+| Block RAM (36 Kb) | 73 | 140 | 52.1 | 2 × 32 for the two 128 KB Forth RAMs, 9 for the pattern memory |
+| DSP48 | 21 | 220 | 9.5 | per core the 32 × 32 multiplier and the FPU significand multiplier; PWM duty products, tone volume |
 | Bonded I/O pins | 94 | 125 | 75.2 | LEDs 10, buttons/switches 6, shield 42, analog 18, Pmods 16, audio 2 |
 | XADC | 1 | 1 | 100 | |
 | BUFGCTRL | 2 | 32 | 6.3 | the two fabric clocks |
 
-The I/O pins and the XADC are limited by the board, not by the design. Logic and block RAM
-leave room for much more: 99 free block RAMs would hold another 400 KB of RAM, and the
-remaining 45,000 LUTs would hold several more CPUs.
+The I/O pins and the XADC are limited by the board, not by the design. 67 block RAMs and
+about 40,000 LUTs are still free.
 
 ### 2.3 Timing
 
 | Clock | Worst setup slack | Worst hold slack | Critical path |
 |---|---|---|---|
-| FCLK0, 50 MHz (20 ns) | 3.246 ns | 0.037 ns | float stack pointer → I/O read data |
-| FCLK1, 200 MHz (5 ns) | 0.464 ns | 0.064 ns | pattern generator: fetch address → pattern memory |
+| FCLK0, 50 MHz (20 ns) | 0.905 ns | 0.035 ns | core 1's float stack pointer → I/O bus → pattern generator memory enable |
+| FCLK1, 200 MHz (5 ns) | 0.134 ns | 0.090 ns | pattern generator: output register → pin register |
 
-All constraints are met (single core with the divider). The 50 MHz paths are not slower with
-the divider: it works in its own registers, two restoring steps per clock, and none of its
-paths is the worst one. In release 3.1 the worst 50 MHz path was the ALU result to the RAM's port B address
-(1.887 ns); the 200 MHz pattern generator's fetch path met timing with no margin then (0.000
-ns, 0.23 ns in 3.0) and depends on the placement around it. A register stage in the fetch path would give it
-margin at the cost of one more clock per jump (a possible future change).
+All constraints are met (two cores). The 50 MHz margin went from 3.2 ns (one core) to
+0.9 ns: the worst path now runs from a core through the arbiter's choice of the bus owner
+into the shared I/O decode, the cost of sharing one I/O bus. If later steps make it negative,
+a register stage on the bus (one more clock for an I/O access) is the remedy. The 200 MHz
+pattern generator has never had much margin (0.000 ns in 3.1, 0.464 ns in step 2) and
+depends on the placement around it.
 
 ## 3 The HF32 CPU
 
@@ -536,14 +537,17 @@ uses the model.
 
 ## 5 Memory and I/O
 
-`rtl/forth_system.v` instantiates the CPU and everything it talks to. All of it runs on the
-50 MHz clock except the 200 MHz halves of the pattern generator and the DDS.
+`rtl/forth_system.v` instantiates two cores (`rtl/hf32_node.v`: an HF32 with its RAM and
+its terminal FIFOs) and everything they share. All of it runs on the 50 MHz clock except the
+200 MHz halves of the pattern generator and the DDS.
 
 ![Memory map](images/design-memory.svg)
 
 ### 5.1 RAM
 
-The RAM is 32K × 32 bits (128 KB), inferred as true dual-port block RAM: 32 RAMB36 tiles.
+Each core has its own RAM of 32K × 32 bits (128 KB), inferred as true dual-port block RAM:
+32 RAMB36 tiles per core. Neither core can reach the other's RAM, so neither ever waits for
+the other's memory accesses.
 
 - **Port A** fetches instructions: address `code_addr`, registered output `insn`.
 - **Port B** is the CPU's data port. While the CPU is held in reset (loading) or paused, it is
@@ -568,6 +572,21 @@ the same clock, and remembers whether that address was I/O (`io_sel`); the data 
 data is `io_sel ? io_rdata : ram_doutb`. Writes go to the addressed block in the store cycle
 itself. Unused registers read 0 and ignore writes.
 
+**Two cores, one I/O bus.** Both cores reach the I/O through one bus: in each clock it
+carries the address of the core whose data address (the next T, or T in a store) is in the
+I/O space. When both are, one goes first (the arbiter's `pr1`):
+
+- the other core's **store** is held in that clock (`stall_st`, raised only while the CPU
+  wants to store, so it cannot loop back into the decision);
+- the other core's **read** came from the wrong address, so that core is stalled in the
+  next clock while it reads again (`lost_q`, the same re-read as after a pause, section 3.6).
+
+The core that waited goes first next time, unless the first one is still repeating its own
+read; so neither waits more than a few clocks, and only when both use the I/O in the same
+clock. Registers `$100000` and `$100004` (the terminal) and `$10001C` (the core number)
+answer for the core on the bus; all other registers are shared. A UART's data read (which
+pops the byte) belongs to the core whose instruction consumes it.
+
 ### 5.3 I/O map
 
 | Address | Read | Write |
@@ -579,6 +598,7 @@ itself. Unused registers read 0 and ignore writes.
 | `$100010` | RGB LEDs: bits 2..0 = LD4 B, G, R; bits 5..3 = LD5 B, G, R | the same |
 | `$100014` | millisecond counter (32 bits, free running) | – |
 | `$100018` | microsecond counter (32 bits, free running) | – |
+| `$10001C` | the core number: 0 or 1 (0 on the single-core 3.x) | – |
 | `$100020 + 16p` | port p (0..2): pin levels, synchronized; pin n = bit n mod 16 of port n / 16 | – |
 | `$100024 + 16p` | port p: output latch | the same |
 | `$100028 + 16p` | port p: direction, 1 = output (all 0 after reset) | the same |
@@ -599,10 +619,10 @@ registers is one cell here (its low half).
 
 ### 5.4 Terminal FIFOs
 
-Two 32-byte first-word-fall-through FIFOs (`rtl/fifo.v`) connect HF32 with the ARM: RX (ARM
-to CPU) and TX (CPU to ARM). The CPU side is the I/O register pair `$100000`/`$100004`; the
-ARM side is `RX_PUSH`, `TX_POP` and `STATUS` on the AXI bus. Both FIFOs are cleared with the
-CPU's reset. The 32 bytes only smooth out the AXI traffic: the real buffering is in the ARM's
+Each core has two 32-byte first-word-fall-through FIFOs (`rtl/fifo.v`) to the ARM: RX (ARM
+to core) and TX (core to ARM). The core's side is the I/O register pair
+`$100000`/`$100004`; the ARM side is that core's `RX_PUSH`, `TX_POP` and `STATUS` on the AXI
+bus (section 6.1). The FIFOs are cleared with their core's reset. The 32 bytes only smooth out the AXI traffic: the real buffering is in the ARM's
 64 KB input ring and 4 KB output ring.
 
 ### 5.5 LEDs, buttons, switches and timers
@@ -800,12 +820,14 @@ short:
 
 ### 5.16 Reset
 
-The CPU's reset (`cpu_rst`: the PL reset or the ARM's hold bit) returns everything the CPU
-controls to its start state: CPU registers and stack pointers, FIFOs, LEDs, pin latches and
-directions (all inputs), every PWM channel off, the UARTs, SPI masters, I²C master, DDS and tone
-generator disabled with their default settings, and the pattern generator stopped. The
-timers and the XADC scanner keep running. So a Forth restart from the app or with Ctrl-R
-always begins on a quiet board.
+A core's reset (`cpu_rst`: the PL reset or the ARM's hold bit for that core) returns the
+core to its start state: registers, stack pointers and its terminal FIFOs. The shared I/O
+(`per_rst`) is reset with the PL and whenever both cores are held: LEDs, pin latches and
+directions (all inputs), every PWM channel off, the UARTs, SPI masters, I²C master, DDS and
+tone generator disabled with their default settings, and the pattern generator stopped. The
+timers and the XADC scanner keep running. With core 1 held, as by a single-core ARM program,
+a restart of core 0 therefore begins on a quiet board as before. (Which peripherals a
+restart of one core releases while the other runs comes with the pin ownership per core.)
 
 ## 6 The ARM side
 
@@ -817,7 +839,11 @@ standalone BSP. It contains the kernel image as a C array (`build/forth_image.h`
 ### 6.1 AXI-Lite registers (ARM side)
 
 The registers of the 16-bit design, so the board view and the HASE board functions read the
-same values; only the loader and the PC field are wider, and `FUNC` is new in 3.1.
+same values; only the loader and the PC field are wider, and `FUNC` is new in 3.1. The
+address has 7 bits: registers 0x00..0x14 belong to core 0, and the same registers at 0x40..0x54
+to core 1 (CTRL1, MEM_ADDR1, MEM_DATA1, TX_POP1, RX_PUSH1, STATUS1). The board state
+(0x18..0x38) reads the same at both. Core 1 is held in reset after the PL reset until the ARM
+clears CTRL1, so an ARM program that knows only core 0 sees the single-core system.
 
 | Offset | Register |
 |---|---|
@@ -834,6 +860,8 @@ same values; only the loader and the PC field are wider, and `FUNC` is new in 3.
 | 0x30 | PG_STATUS: bits 27..16 = the pattern generator's current step, bits 6..0 = its status |
 | 0x34 | PG_OUT: bits 31..16 = the channel enable mask, bits 15..0 = the current output levels |
 | 0x38 | FUNC: a write selects a pin-function entry 0..13; a read returns bits 19..16 = the selection, bit 15 = on, bits 5..0 = the pin |
+| 0x3C | CORES: the number of cores (2; it reads 0 on the single-core 3.x) |
+| 0x40..0x54 | core 1's CTRL, MEM_ADDR, MEM_DATA, TX_POP, RX_PUSH, STATUS |
 
 The slave handles one transaction per direction at a time and always answers OKAY. Registers
 0x18 to 0x38 only read state, so the app's board view never disturbs the CPU.
@@ -1408,7 +1436,7 @@ All run in the Vivado simulator (xsim) through PowerShell scripts in `sim/`:
 
 | Testbench | Script | What it checks |
 |---|---|---|
-| `tb_forth.v` | `run_sim.ps1 -InputFile <session>` | the whole system: preloads the kernel, releases the CPU over AXI-Lite like the ARM, feeds a session into the RX FIFO and prints the TX FIFO; pauses the CPU at random moments to read RAM, and walks the dictionary at the end. Its output is the same as the simulator's for the same session |
+| `tb_forth.v` | `run_sim.ps1 -InputFile <session> [-InputFile1 <session>]` | the whole system: preloads the kernel, releases the CPU over AXI-Lite like the ARM, feeds a session into the RX FIFO and prints the TX FIFO; pauses the CPU at random moments to read RAM, and walks the dictionary at the end. Its output is the same as the simulator's for the same session. With a second session, core 1 runs it at the same time (output in `build/sim/core1.txt`); `run_dual.ps1` compares both cores with the simulator (`hf32.py run --core n`), with `sim/dual0.txt`/`dual1.txt`, in which both cores read the core number and write the LEDs 3,000 times each. A simulated-time limit (200 ms) ends a session that waits forever |
 | `tb_mcu.v` | `run_mcu.ps1` | the multi-cycle unit against the vectors of `test_fpu.py`, bit for bit |
 | `tb_periph.v` | `run_periph.ps1` | UART 0 → 1 at 1 MBd and 115,200 Bd with all byte values, overrun and framing errors; SPI loopback in modes 0..3, 8/16/32 bits, both bit orders, fastest clock; I²C against a 24Cxx-style slave model that stretches SCL; DDS frequency over 1 ms; the tone modulator's duty: 563 checks |
 | `tb_patgen.v` | `run_patgen.ps1` | the pattern generator, tick by tick against a model of the step semantics |

@@ -1,0 +1,8 @@
+$10001C @ constant me  me .
+: chk ( n -- errors ) 0 swap 0 do $10001C @ me <> if 1+ then
+  i 15 and $100008 ! loop ;
+3000 chk .
+: rows 8 0 do me . i . i i * . cr loop ;  rows
+: t 0 swap 0 do i 37 u/mod + + loop ; 1000 t .
+1234567 89 u/mod . .  2.5e0 2e0 f* f.
+3000 chk . 1 2 3 .s 2drop drop

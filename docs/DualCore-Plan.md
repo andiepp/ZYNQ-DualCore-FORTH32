@@ -50,7 +50,23 @@ enough for both `um/mod` and `u/mod` (the latter with a high cell of 0), rather 
   3.1 kernel on all `sim/*.txt` inputs. The board test
   comes with the dual-core firmware (step 6), or earlier if a single-core 3.2 build is wanted.
 
-## Step 3 onwards: the second core
+## Step 3: the second core (in progress)
+
+Three parts, each checked before the next:
+
+1. **Two cores side by side** (2026-11-04): `rtl/hf32_node.v` is one core with its RAM and
+   terminal FIFOs; `forth_system` has two of them and one I/O bus with an arbiter (design.md
+   5.2). The core-number register is `$10001C`. AXI: core 1's registers at 0x40..0x54, the
+   number of cores at 0x3C; core 1 is held until the ARM releases it, so firmware 3.1 still
+   runs on this logic as a single core. Checked with `sim/run_dual.ps1` (both cores at once,
+   each against the simulator; each core read the core number 6,000 times while both wrote
+   the LEDs, no errors, about 13,600 clocks of waiting each in 2.8 million) and single-core
+   `smoke`/`divide` (unchanged). Built: 12,485 LUTs, 73 block RAMs, 21 DSPs; 0.905 ns slack
+   at 50 MHz (3.2 ns with one core), 0.134 ns at 200 MHz. Not on the board yet (step 4).
+2. Mailboxes, the shared RAM window and locks.
+3. Pin and peripheral ownership per core.
+
+## Step 3 onwards: notes
 
 - **Logic:** a second `hf32_cpu` with its own `hf32_mcu` (FPU and divider) and 32 more block
   RAMs for its 128 KB: 73 of 140 block RAMs, roughly 12,000 of 53,200 LUTs. 50 MHz should

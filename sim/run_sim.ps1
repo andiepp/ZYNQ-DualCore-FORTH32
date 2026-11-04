@@ -1,7 +1,9 @@
 # Compile the kernel and run the RTL testbench in the Vivado simulator (xsim).
 # Usage (from the repository root): .\sim\run_sim.ps1 [-InputFile sim\smoke.txt]
+#   -InputFile1 sim\x.txt: core 1 runs too, with this input; its output: build\sim\core1.txt
 param(
     [string]$InputFile = 'sim\smoke.txt',
+    [string]$InputFile1,
     [string]$Vivado
 )
 $ErrorActionPreference = 'Stop'
@@ -21,6 +23,8 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 # The testbench's default file names; the Xilinx .bat launchers mangle '=' in -testplusarg
 Copy-Item (Join-Path $root 'build\forth.hex') (Join-Path $out 'forth.hex')
 Copy-Item (Join-Path $root $InputFile) (Join-Path $out 'input.txt')
+Remove-Item (Join-Path $out 'input1.txt'), (Join-Path $out 'core1.txt') -ErrorAction SilentlyContinue
+if ($InputFile1) { Copy-Item (Join-Path $root $InputFile1) (Join-Path $out 'input1.txt') }
 Copy-Item (Join-Path $root 'sim\xadc_stim.txt') (Join-Path $out 'xadc_stim.txt')
 # the address of LATEST for the testbench's dictionary walk
 $latest = (Select-String -Path (Join-Path $root 'build\forth_image.h') -Pattern 'FORTH_LATEST_ADDR 0x(\w+)').Matches[0].Groups[1].Value
@@ -34,7 +38,7 @@ try {
     & "$Vivado\xvlog.bat" -nolog $rtl (Join-Path $root 'sim\tb_forth.v') $glbl | Select-String 'ERROR|WARNING'
     & "$Vivado\xelab.bat" -nolog -debug off -timescale 1ns/1ps -L unisims_ver tb glbl -s tb_snap | Select-String 'ERROR'
     & "$Vivado\xsim.bat" tb_snap -nolog -R |
-        Where-Object { $_ -notmatch '^(INFO|\*\*\*\*|Vivado Simulator|Time resolution|  \*\*|source |# |ECHO)' }
+        Where-Object { $_ -notmatch '^(INFO|\*\*\*\*|Vivado Simulator|Time resolution|  \*\*|source |# |ECHO|WARNING: file input1\.txt)' }
 }
 finally {
     Pop-Location

@@ -704,7 +704,8 @@ XADC_SIM = {0x00: 2585, 0x01: 1365, 0x02: 2458, 0x06: 1365, 0x0D: 1365, 0x0E: 24
 
 
 class Machine:
-    def __init__(self, mem, rx=b''):
+    def __init__(self, mem, rx=b'', core=0):
+        self.core = core                                 # I/O register 7, the core number
         self.mem = bytearray(mem)
         self.pc = 0
         self.t = 0
@@ -798,6 +799,8 @@ class Machine:
             return self.ms & M32
         if k == 6:
             return (self.steps // 50) & M32          # nominal: 50 instructions per us
+        if k == 7:
+            return self.core
         return 0
 
     def io_read_hi(self, k):
@@ -1054,6 +1057,7 @@ def main():
                    help='a line of terminal input (repeatable)')
     r.add_argument('-f', '--input-file', help='file with lines of terminal input')
     r.add_argument('--steps', type=int, default=50_000_000)
+    r.add_argument('--core', type=int, default=0, help='the core number register ($10001C)')
     args = ap.parse_args()
 
     comp = Compiler()
@@ -1074,7 +1078,7 @@ def main():
             with open(args.input_file, encoding='ascii') as f:
                 lines += f.read().splitlines()
         rx = ''.join(line + '\r' for line in lines).encode('ascii')
-        m = Machine(comp.mem, rx)
+        m = Machine(comp.mem, rx, args.core)
         m.run(args.steps)
         sys.stdout.write(m.tx.decode('ascii', 'replace'))
         print(f'\n[{m.steps} instructions, dsp={m.dsp}, rsp={m.rsp}, fsp={m.fsp}, '

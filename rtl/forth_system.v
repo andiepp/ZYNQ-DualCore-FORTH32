@@ -1,6 +1,14 @@
-// HF32 Forth system: CPU, 128 KB RAM, I/O, the pattern generator and an AXI-Lite slave
-// for the ARM (image loader, UART character bridge, RAM reads while paused, board state
-// for the app's lab panel). Register and I/O maps: docs/design.md.
+// HF32 Forth system: two HF32 cores, each with its own 128 KB RAM and terminal (hf32_node),
+// the shared I/O, the pattern generator and an AXI-Lite slave for the ARM (image loader,
+// character bridge, RAM reads while paused, board state for the app's lab panel). Register
+// and I/O maps: docs/design.md.
+//
+// The cores share one I/O bus. A core uses it whenever its data address (the next T, or T
+// for a store) is in the I/O space. When both do in the same clock, one goes first: the
+// other's store is held, and its read is repeated in the next clock (the read data of
+// that clock came from the other core's address). The core that waited goes first the
+// next time, so neither waits more than a few clocks. Core 1 stays in reset until the ARM
+// releases it, so a single-core ARM program sees the single-core system.
 
 `default_nettype none
 
@@ -10,7 +18,7 @@ module forth_system #(
     input  wire        s_axi_aclk,
     input  wire        s_axi_aresetn,
 
-    input  wire [5:0]  s_axi_awaddr,
+    input  wire [6:0]  s_axi_awaddr,
     input  wire [2:0]  s_axi_awprot,
     input  wire        s_axi_awvalid,
     output reg         s_axi_awready,
@@ -21,7 +29,7 @@ module forth_system #(
     output wire [1:0]  s_axi_bresp,
     output reg         s_axi_bvalid,
     input  wire        s_axi_bready,
-    input  wire [5:0]  s_axi_araddr,
+    input  wire [6:0]  s_axi_araddr,
     input  wire [2:0]  s_axi_arprot,
     input  wire        s_axi_arvalid,
     output reg         s_axi_arready,
@@ -57,97 +65,99 @@ module forth_system #(
     wire rst = !s_axi_aresetn;
 
     // ------------------------------------------------------------------
-    // Control registers written by the ARM
+    // Control registers written by the ARM, one set per core (AXI address bit 6)
     // ------------------------------------------------------------------
-    reg         cpu_hold = 1'b1;   // CPU held in reset until the image is loaded
-    reg         cpu_pause = 1'b0;  // CPU frozen between instructions, RAM port B to the ARM
-    reg         pause_q = 1'b0;
-    reg  [14:0] ld_addr  = 15'd0;
-    reg  [31:0] ld_data  = 32'd0;
-    reg         ld_we    = 1'b0;
+    reg  [1:0]  cpu_hold  = 2'b11;  // a core is held in reset until its image is loaded
+    reg  [1:0]  cpu_pause = 2'b00;  // frozen between instructions, RAM port B to the ARM
+    reg  [1:0]  pause_q   = 2'b00;
+    reg  [14:0] ld_addr0  = 15'd0, ld_addr1 = 15'd0;
+    reg  [31:0] ld_data   = 32'd0;
+    reg  [1:0]  ld_we     = 2'b00;
 
-    wire cpu_rst = rst | cpu_hold;
-    // one more stalled cycle after the pause, while port B re-reads the CPU's [T]
-    wire cpu_stall = cpu_pause | pause_q;
-    wire ld_port   = cpu_hold | cpu_pause;     // port B addressed by the ARM
+    wire [1:0]  cpu_rst = {2{rst}} | cpu_hold;
+    wire [1:0]  ld_port = cpu_hold | cpu_pause;     // port B addressed by the ARM
+    // the shared I/O is reset with the system, and when both cores are held (a restart
+    // of the only running core, as in the single-core system)
+    wire        per_rst = rst | (&cpu_hold);
 
     always @(posedge clk)
         pause_q <= cpu_pause;
 
     // ------------------------------------------------------------------
-    // CPU
+    // The two cores
     // ------------------------------------------------------------------
-    wire [14:0] code_addr;
-    wire [31:0] insn;
-    wire [31:0] mem_addr, mem_wdata, mem_rdata, cpu_t;
-    wire        mem_we, mem_byte, mem_rd;
-    wire [14:0] cpu_pc;
+    wire [31:0] a0, a1, wd0, wd1, t0, t1, ram_doutb0, ram_doutb1;
+    wire        we0, we1, by0, by1, rd0, rd1, sr0, sr1;
+    wire [14:0] pc0, pc1;
+    wire [7:0]  rx_dout0, rx_dout1, tx_dout0, tx_dout1;
+    wire [1:0]  rx_empty, rx_full, tx_empty, tx_full;
+    reg  [1:0]  rx_push = 2'b00, tx_pop = 2'b00;
+    reg  [7:0]  rx_din  = 8'd0;
+    reg  [31:0] io_rdata = 32'd0;
 
-    hf32_cpu #(.AW(15)) cpu (
-        .clk(clk), .rst(cpu_rst), .stall(cpu_stall),
-        .code_addr(code_addr), .insn(insn),
-        .mem_addr(mem_addr), .mem_we(mem_we), .mem_byte(mem_byte),
-        .mem_wdata(mem_wdata), .mem_rdata(mem_rdata), .mem_rd(mem_rd),
-        .t_out(cpu_t), .pc_out(cpu_pc)
-    );
-
-    // ------------------------------------------------------------------
-    // 32K x 32 RAM: port A = instruction fetch, port B = data (CPU or loader).
-    // Addresses from $100000 up are I/O (address bit 20); below, RAM repeats every 128 KB.
-    // ------------------------------------------------------------------
-    reg [31:0] ram [0:32767];
-    reg [31:0] ram_douta, ram_doutb;
-
-    wire        io_addr   = mem_addr[20];
-    wire        ram_store = mem_we && !io_addr;
-    wire [14:0] addrb = ld_port ? ld_addr : mem_addr[16:2];
-    wire [31:0] dinb  = cpu_hold ? ld_data :
-                        mem_byte ? {4{mem_wdata[7:0]}} : mem_wdata;
-    wire [3:0]  web   = cpu_hold ? {4{ld_we}} :
-                        !ram_store ? 4'b0000 :
-                        !mem_byte  ? 4'b1111 :
-                        4'b0001 << mem_addr[1:0];
+    // I/O arbiter: pr1 = core 1 goes first; lost_q = this core's read lost the bus
+    reg         pr1    = 1'b0;
+    reg  [1:0]  lost_q = 2'b00;
+    wire        io0 = a0[20] && !cpu_rst[0] && !cpu_pause[0];
+    wire        io1 = a1[20] && !cpu_rst[1] && !cpu_pause[1];
+    wire        stall_st0 =  pr1 && sr0 && t0[20] && io1;
+    wire        stall_st1 = !pr1 && sr1 && t1[20] && io0;
+    wire        owner = pr1 ? io1 : !io0;           // the core on the I/O bus this clock
+    wire [1:0]  stall = cpu_pause | pause_q | lost_q;
 
     always @(posedge clk)
-        ram_douta <= ram[code_addr];
+        if (rst) begin
+            pr1    <= 1'b0;
+            lost_q <= 2'b00;
+        end else begin
+            lost_q <= {!pr1 && io0 && io1, pr1 && io0 && io1};
+            // the one that waited goes first next time, unless the first one is still
+            // repeating its own read
+            if (io0 && io1 && !(pr1 ? lost_q[1] : lost_q[0]))
+                pr1 <= !pr1;
+        end
 
-    integer bl;
-    always @(posedge clk) begin
-        for (bl = 0; bl < 4; bl = bl + 1)
-            if (web[bl]) ram[addrb][8*bl +: 8] <= dinb[8*bl +: 8];
-        ram_doutb <= ram[addrb];
-    end
+    hf32_node n0 (
+        .clk(clk), .rst(cpu_rst[0]), .stall(stall[0]), .stall_st(stall_st0),
+        .ld_hold(cpu_hold[0]), .ld_port(ld_port[0]), .ld_addr(ld_addr0), .ld_data(ld_data),
+        .ld_we(ld_we[0]), .ram_doutb(ram_doutb0),
+        .rx_push(rx_push[0]), .rx_din(rx_din), .tx_pop(tx_pop[0]),
+        .rx_dout(rx_dout0), .tx_dout(tx_dout0),
+        .rx_empty(rx_empty[0]), .rx_full(rx_full[0]), .tx_empty(tx_empty[0]), .tx_full(tx_full[0]),
+        .mem_addr(a0), .mem_we(we0), .mem_byte(by0), .mem_wdata(wd0), .mem_rd(rd0),
+        .st_req(sr0), .cpu_t(t0), .cpu_pc(pc0), .io_rdata(io_rdata)
+    );
 
-    assign insn = ram_douta;
+    hf32_node n1 (
+        .clk(clk), .rst(cpu_rst[1]), .stall(stall[1]), .stall_st(stall_st1),
+        .ld_hold(cpu_hold[1]), .ld_port(ld_port[1]), .ld_addr(ld_addr1), .ld_data(ld_data),
+        .ld_we(ld_we[1]), .ram_doutb(ram_doutb1),
+        .rx_push(rx_push[1]), .rx_din(rx_din), .tx_pop(tx_pop[1]),
+        .rx_dout(rx_dout1), .tx_dout(tx_dout1),
+        .rx_empty(rx_empty[1]), .rx_full(rx_full[1]), .tx_empty(tx_empty[1]), .tx_full(tx_full[1]),
+        .mem_addr(a1), .mem_we(we1), .mem_byte(by1), .mem_wdata(wd1), .mem_rd(rd1),
+        .st_req(sr1), .cpu_t(t1), .cpu_pc(pc1), .io_rdata(io_rdata)
+    );
 
-    // ------------------------------------------------------------------
-    // UART FIFOs: RX = ARM -> CPU, TX = CPU -> ARM
-    // ------------------------------------------------------------------
-    wire [7:0] rx_dout, tx_dout;
-    wire       rx_empty, rx_full, tx_empty, tx_full;
-    reg        rx_push = 1'b0, tx_pop = 1'b0;
-    reg  [7:0] rx_din  = 8'd0;
+    // the I/O bus: the owner's address and store
+    wire [31:0] mem_addr  = owner ? a1 : a0;
+    wire        mem_we    = owner ? we1 : we0;
+    wire [31:0] mem_wdata = owner ? wd1 : wd0;
+    wire        io_addr   = mem_addr[20];
 
     // I/O register k sits at $100000 + 4k; only address bits 9..2 are decoded. Registers
     // 0..127 are the board I/O of the 16-bit design, 128.. the serial interfaces, the DDS
-    // and the tone generator ($100200..).
+    // and the tone generator ($100200..). Registers 0 (terminal), 1 (its status) and 7
+    // (the core number) belong to the core on the bus.
     wire       io_store = mem_we && io_addr;
     wire [7:0] io_k8    = mem_addr[9:2];
     wire [6:0] io_k     = io_k8[6:0];
     wire       io_lo    = !io_k8[7];
     wire       io_hi    = io_k8[7];
-    wire       rx_pop   = mem_rd && cpu_t == 32'h0010_0000;
-    wire       tx_push  = io_store && io_k8 == 8'd0;
 
-    fifo #(.WIDTH(8), .DEPTH_LOG2(5)) rx_fifo (
-        .clk(clk), .rst(cpu_rst), .push(rx_push), .din(rx_din),
-        .pop(rx_pop), .dout(rx_dout), .empty(rx_empty), .full(rx_full)
-    );
-
-    fifo #(.WIDTH(8), .DEPTH_LOG2(5)) tx_fifo (
-        .clk(clk), .rst(cpu_rst), .push(tx_push), .din(mem_wdata[7:0]),
-        .pop(tx_pop), .dout(tx_dout), .empty(tx_empty), .full(tx_full)
-    );
+    // a read with a side effect (a UART's RX data): the core that consumes it
+    wire u0_rd = (rd0 && t0 == 32'h0010_0200) || (rd1 && t1 == 32'h0010_0200);
+    wire u1_rd = (rd0 && t0 == 32'h0010_0210) || (rd1 && t1 == 32'h0010_0210);
 
     // ------------------------------------------------------------------
     // Buttons: synchronize, sample every 10 ms (debounce). Millisecond and microsecond
@@ -211,7 +221,7 @@ module forth_system #(
     wire                io_pwm = io_lo && io_k[6:4] == 3'b100;   // $100100..$10013F
 
     pwm #(.CHANNELS(PWM_CH)) pwm_unit (
-        .clk(clk), .rst(cpu_rst), .we(io_store && io_pwm),
+        .clk(clk), .rst(per_rst), .we(io_store && io_pwm),
         .ch_sel(io_k[3:2]), .reg_sel(io_k[1:0]), .wdata(mem_wdata[15:0]),
         .rdata(pwm_rdata), .enable(pwm_en), .pin(pwm_pin), .out(pwm_level)
     );
@@ -241,41 +251,41 @@ module forth_system #(
     wire sel_tone = io_hi && io_k[6:2] == 5'd10;     // $1002A0
 
     uart u0 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_u0), .rd(mem_rd && cpu_t == 32'h0010_0200),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_u0), .rd(u0_rd),
         .reg_sel(io_k[1:0]), .wdata(mem_wdata), .rdata(u0_rdata), .rx_in(pin_sync[u0_rxp]),
         .tx_out(u0_tx), .enable(u0_en), .tx_pin(u0_txp), .rx_pin(u0_rxp)
     );
     uart u1 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_u1), .rd(mem_rd && cpu_t == 32'h0010_0210),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_u1), .rd(u1_rd),
         .reg_sel(io_k[1:0]), .wdata(mem_wdata), .rdata(u1_rdata), .rx_in(pin_sync[u1_rxp]),
         .tx_out(u1_tx), .enable(u1_en), .tx_pin(u1_txp), .rx_pin(u1_rxp)
     );
     spi s0 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_s0), .reg_sel(io_k[2:0]),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_s0), .reg_sel(io_k[2:0]),
         .wdata(mem_wdata), .rdata(s0_rdata), .miso_in(pin_sync[s0_misop]),
         .sck_out(s0_sck), .mosi_out(s0_mosi), .enable(s0_en),
         .sck_pin(s0_sckp), .mosi_pin(s0_mosip), .miso_pin(s0_misop)
     );
     spi s1 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_s1), .reg_sel(io_k[2:0]),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_s1), .reg_sel(io_k[2:0]),
         .wdata(mem_wdata), .rdata(s1_rdata), .miso_in(pin_sync[s1_misop]),
         .sck_out(s1_sck), .mosi_out(s1_mosi), .enable(s1_en),
         .sck_pin(s1_sckp), .mosi_pin(s1_mosip), .miso_pin(s1_misop)
     );
     i2c i2c0 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_i2c), .reg_sel(io_k[1:0]),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_i2c), .reg_sel(io_k[1:0]),
         .wdata(mem_wdata), .rdata(i2c_rdata),
         .scl_in(pin_sync[i2c_sclp]), .sda_in(pin_sync[i2c_sdap]),
         .scl_low(i2c_scl_low), .sda_low(i2c_sda_low), .enable(i2c_en),
         .scl_pin(i2c_sclp), .sda_pin(i2c_sdap)
     );
     dds dds0 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_dds), .reg_sel(io_k[0]),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_dds), .reg_sel(io_k[0]),
         .wdata(mem_wdata), .rdata(dds_rdata), .dds_clk(pg_clk),
         .out(dds_out), .enable(dds_en), .pin(dds_pinp)
     );
     tone tone0 (
-        .clk(clk), .rst(cpu_rst), .we(io_store && sel_tone), .reg_sel(io_k[1:0]),
+        .clk(clk), .rst(per_rst), .we(io_store && sel_tone), .reg_sel(io_k[1:0]),
         .wdata(mem_wdata), .rdata(tone_rdata), .aud_pwm(aud[0]), .aud_sd(aud[1])
     );
 
@@ -359,7 +369,7 @@ module forth_system #(
     wire [31:0] pg_status, pg_out;
 
     patgen pg (
-        .clk(clk), .rst(cpu_rst), .we(io_store && io_pg), .reg_sel(io_k[3:0]),
+        .clk(clk), .rst(per_rst), .we(io_store && io_pg), .reg_sel(io_k[3:0]),
         .wdata(mem_wdata[15:0]), .rdata(pg_rdata), .arm_status(pg_status), .arm_out(pg_out),
         .pg_clk(pg_clk), .trig_pins({ck_x, ck_ioh, 6'd0, ck_a, ck_io}), .trig_btn(btn),
         .pins(pmod)
@@ -368,22 +378,20 @@ module forth_system #(
     // ------------------------------------------------------------------
     // I/O registers (CPU side), register k at $100000 + 4k. Reads are registered like
     // the RAM.
-    //   k 0..6     $100000..$100018  UART, LEDs, buttons, RGB, ms timer, us timer
+    //   k 0..7     $100000..$10001C  terminal, its status, LEDs, buttons, RGB, ms timer,
+    //                                us timer, core number
     //   k 8 + 4p   $100020 + 16p     port p: +0 pin levels, +4 output latch, +8 direction
     //   k 32..63   $100080..$1000FC  XADC status registers 0..31
     //   k 64 + 4c  $100100 + 16c     PWM channel c: +0/+4 period, +8 duty, +12 control
     //   k 96..106  $100180..$1001A8  pattern generator (rtl/patgen.v)
     //   k 128..    $100200..         UARTs, SPI masters, I2C, DDS, tone (above)
     // ------------------------------------------------------------------
-    reg [31:0] io_rdata = 32'd0;
-    reg        io_sel   = 1'b0;
-
     wire       io_gpio = io_lo && io_k[6:5] == 2'b00 && io_k[4:2] >= 3'd2 && io_k[4:2] <= 3'd4;
     wire [2:0] io_port = io_k[4:2] - 3'd2;
     wire [6:0] io_bit0 = {io_port, 4'd0};                 // first pin of the port
 
     always @(posedge clk) begin
-        if (cpu_rst) begin
+        if (per_rst) begin
             led     <= 4'd0;
             rgb     <= 6'd0;
             pin_out <= 48'd0;
@@ -403,7 +411,6 @@ module forth_system #(
                 endcase
         end
 
-        io_sel <= io_addr;
         if (sel_u0)
             io_rdata <= u0_rdata;
         else if (sel_u1)
@@ -435,20 +442,19 @@ module forth_system #(
             endcase
         else if (io_k[6:3] == 4'd0)
             case (io_k[2:0])
-                3'd0: io_rdata <= {24'd0, rx_dout};
-                3'd1: io_rdata <= {30'd0, !tx_full, !rx_empty};
+                3'd0: io_rdata <= {24'd0, owner ? rx_dout1 : rx_dout0};
+                3'd1: io_rdata <= {30'd0, !tx_full[owner], !rx_empty[owner]};
                 3'd2: io_rdata <= {28'd0, led};
                 3'd3: io_rdata <= {26'd0, in_state};
                 3'd4: io_rdata <= {26'd0, rgb};
                 3'd5: io_rdata <= ms_count;
                 3'd6: io_rdata <= us_count;
+                3'd7: io_rdata <= {31'd0, owner};       // the core number
                 default: io_rdata <= 32'd0;
             endcase
         else
             io_rdata <= 32'd0;
     end
-
-    assign mem_rdata = io_sel ? io_rdata : ram_doutb;
 
     // the pin functions for the ARM's board view: bit 15 enabled, bits 5..0 pin (63: the
     // audio jack); 0 UART0 TX, 1 UART0 RX, 2 UART1 TX, 3 UART1 RX, 4 SPI0 SCK, 5 SPI0 MOSI,
@@ -481,6 +487,11 @@ module forth_system #(
     assign s_axi_bresp = 2'b00;
     assign s_axi_rresp = 2'b00;
 
+    // Per-core registers 0..5 at offset 0 (core 0) and $40 (core 1); the board state
+    // (6..14) is the same at both; register 15 reads the number of cores.
+    wire wc = s_axi_awaddr[6];
+    wire rc = s_axi_araddr[6];
+
     always @(posedge clk) begin
         if (rst) begin
             s_axi_awready <= 1'b0;
@@ -489,26 +500,26 @@ module forth_system #(
             s_axi_arready <= 1'b0;
             s_axi_rvalid  <= 1'b0;
             s_axi_rdata   <= 32'd0;
-            cpu_hold      <= 1'b1;
-            cpu_pause     <= 1'b0;
-            ld_addr       <= 15'd0;
-            ld_we         <= 1'b0;
-            rx_push       <= 1'b0;
-            tx_pop        <= 1'b0;
+            cpu_hold      <= 2'b11;
+            cpu_pause     <= 2'b00;
+            ld_addr0      <= 15'd0;
+            ld_addr1      <= 15'd0;
+            ld_we         <= 2'b00;
+            rx_push       <= 2'b00;
+            tx_pop        <= 2'b00;
             xadc_sel      <= 5'd0;
             func_sel      <= 4'd0;
         end else begin
             s_axi_awready <= 1'b0;
             s_axi_wready  <= 1'b0;
             s_axi_arready <= 1'b0;
-            rx_push       <= 1'b0;
-            tx_pop        <= 1'b0;
+            rx_push       <= 2'b00;
+            tx_pop        <= 2'b00;
 
             // A loader write lands in RAM this cycle; advance the address after it
-            if (ld_we) begin
-                ld_we   <= 1'b0;
-                ld_addr <= ld_addr + 15'd1;
-            end
+            if (ld_we[0]) ld_addr0 <= ld_addr0 + 15'd1;
+            if (ld_we[1]) ld_addr1 <= ld_addr1 + 15'd1;
+            ld_we <= 2'b00;
 
             if (!s_axi_bvalid && !s_axi_awready && s_axi_awvalid && s_axi_wvalid) begin
                 s_axi_awready <= 1'b1;
@@ -516,17 +527,18 @@ module forth_system #(
                 s_axi_bvalid  <= 1'b1;
                 case (s_axi_awaddr[5:2])
                     4'd0: begin
-                        cpu_hold  <= s_axi_wdata[0];
-                        cpu_pause <= s_axi_wdata[1];
+                        cpu_hold[wc]  <= s_axi_wdata[0];
+                        cpu_pause[wc] <= s_axi_wdata[1];
                     end
-                    4'd1: ld_addr  <= s_axi_wdata[14:0];
+                    4'd1: if (wc) ld_addr1 <= s_axi_wdata[14:0];
+                          else    ld_addr0 <= s_axi_wdata[14:0];
                     4'd2: begin
-                        ld_data <= s_axi_wdata;
-                        ld_we   <= cpu_hold;
+                        ld_data   <= s_axi_wdata;
+                        ld_we[wc] <= cpu_hold[wc];
                     end
                     4'd4: begin
-                        rx_din  <= s_axi_wdata[7:0];
-                        rx_push <= 1'b1;
+                        rx_din      <= s_axi_wdata[7:0];
+                        rx_push[wc] <= 1'b1;
                     end
                     4'd11: xadc_sel <= s_axi_wdata[4:0];
                     4'd14: func_sel <= s_axi_wdata[3:0];
@@ -540,14 +552,15 @@ module forth_system #(
                 s_axi_arready <= 1'b1;
                 s_axi_rvalid  <= 1'b1;
                 case (s_axi_araddr[5:2])
-                    4'd0: s_axi_rdata <= {30'd0, cpu_pause, cpu_hold};
-                    4'd1: s_axi_rdata <= {17'd0, ld_addr};
-                    4'd2: s_axi_rdata <= ram_doutb;
+                    4'd0: s_axi_rdata <= {30'd0, cpu_pause[rc], cpu_hold[rc]};
+                    4'd1: s_axi_rdata <= {17'd0, rc ? ld_addr1 : ld_addr0};
+                    4'd2: s_axi_rdata <= rc ? ram_doutb1 : ram_doutb0;
                     4'd3: begin
-                        s_axi_rdata <= {23'd0, !tx_empty, tx_dout};
-                        tx_pop      <= !tx_empty;
+                        s_axi_rdata <= {23'd0, !tx_empty[rc], rc ? tx_dout1 : tx_dout0};
+                        tx_pop[rc]  <= !tx_empty[rc];
                     end
-                    4'd5: s_axi_rdata <= {1'd0, cpu_pc, 6'd0, in_state, 2'd0, !tx_empty, rx_full};
+                    4'd5: s_axi_rdata <= {1'd0, rc ? pc1 : pc0, 6'd0, in_state, 2'd0,
+                                          !tx_empty[rc], rx_full[rc]};
                     // board state, read while Forth runs
                     4'd6: s_axi_rdata <= {10'd0, in_state, 6'd0, rgb, led};
                     4'd7: s_axi_rdata <= {pin_drive[15:0],  pin_sync[15:0]  & pin_exists[15:0]};
@@ -558,6 +571,7 @@ module forth_system #(
                     4'd12: s_axi_rdata <= pg_status;
                     4'd13: s_axi_rdata <= pg_out;
                     4'd14: s_axi_rdata <= {12'd0, func_sel, func_word};
+                    4'd15: s_axi_rdata <= 32'd2;                // number of cores
                     default: s_axi_rdata <= 32'd0;
                 endcase
             end

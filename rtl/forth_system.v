@@ -12,7 +12,9 @@
 //
 // On the bus, for the cores to work together: a mailbox in each direction ($100050 data,
 // $100054 status, as seen by the core using them), 8 locks ($100060..) and a 4 KB shared
-// RAM ($101000..$101FFF).
+// RAM ($101000..$101FFF). Pins and peripherals have an owner core ($100300.., $1003C0..):
+// a core's restart releases what it held and resets those peripherals and pins, while
+// the other core keeps running.
 
 `default_nettype none
 
@@ -242,6 +244,77 @@ module forth_system #(
     end
 
     // ------------------------------------------------------------------
+    // Owners. Pin n at $100300 + 4n: write an id 1..15 to take the pin if it is free or
+    // the writing core's (the id names the user: the kernel's peripheral numbers, 15 an
+    // output pin), 0 to release it (owner only); read 0 = free, id = this core's,
+    // 16 + id = the other core's. Peripheral u at $1003C0 + 4u (1..4 PWM 0..3, 5/6 UART,
+    // 7/8 SPI, 9 I2C, 10 DDS, 11 tone, 12 pattern generator): like the locks. When a core
+    // is reset, what it held is released: its peripherals are reset, its pins become
+    // inputs with their latch 0.
+    // ------------------------------------------------------------------
+    wire       sel_pin  = io_hi && io_k[6] && io_k[5:4] != 2'b11;   // $100300..$1003BC
+    wire       sel_unit = io_hi && io_k[6:4] == 3'b111;             // $1003C0..$1003FC
+    wire [5:0] pn       = io_k[5:0];
+    wire [3:0] un       = io_k[3:0];
+
+    reg  [47:0] pt_taken = 48'd0, pt_core = 48'd0;
+    reg  [3:0]  pt_id [0:47];
+    reg  [15:0] ut_taken = 16'd0, ut_core = 16'd0;
+    wire [47:0] pin_rst;                 // the pin's owner is being reset
+    wire [15:0] unit_rst;                // the peripheral's owner is being reset
+
+    genvar og;
+    generate
+        for (og = 0; og < 48; og = og + 1) begin : g_pin_rst
+            assign pin_rst[og] = pt_taken[og] && cpu_rst[pt_core[og]];
+        end
+        for (og = 0; og < 16; og = og + 1) begin : g_unit_rst
+            assign unit_rst[og] = ut_taken[og] && cpu_rst[ut_core[og]];
+        end
+    endgenerate
+
+    integer pi;
+    initial
+        for (pi = 0; pi < 48; pi = pi + 1)
+            pt_id[pi] = 4'd0;
+
+    always @(posedge clk) begin
+        if (!rst && io_store && sel_pin && pn < 6'd48) begin
+            if (mem_wdata[3:0] != 4'd0) begin
+                if (!pt_taken[pn] || pt_core[pn] == owner) begin
+                    pt_taken[pn] <= 1'b1;
+                    pt_core[pn]  <= owner;
+                    pt_id[pn]    <= mem_wdata[3:0];
+                end
+            end else if (pt_taken[pn] && pt_core[pn] == owner) begin
+                pt_taken[pn] <= 1'b0;
+            end
+        end
+        if (!rst && io_store && sel_unit) begin
+            if (mem_wdata[0]) begin
+                if (!ut_taken[un]) begin
+                    ut_taken[un] <= 1'b1;
+                    ut_core[un]  <= owner;
+                end
+            end else if (ut_taken[un] && ut_core[un] == owner) begin
+                ut_taken[un] <= 1'b0;
+            end
+        end
+        for (pi = 0; pi < 48; pi = pi + 1)
+            if (rst || pin_rst[pi]) pt_taken[pi] <= 1'b0;
+        for (pi = 0; pi < 16; pi = pi + 1)
+            if (rst || unit_rst[pi]) ut_taken[pi] <= 1'b0;
+    end
+
+    // GPIO without read-modify-write, so the cores cannot undo each other's changes:
+    // port p at $100140 + 16p: +0 set latch bits, +4 clear them, +8 set direction bits,
+    // +12 clear them; $100170 + 4p: toggle latch bits
+    wire       io_gset = io_lo && io_k[6:4] == 3'b101 && io_k[3:2] != 2'b11;
+    wire       io_gtog = io_lo && io_k[6:2] == 5'b10111 && io_k[1:0] != 2'b11;
+    wire [6:0] gbit_s  = {io_k[3:2], 4'd0};
+    wire [6:0] gbit_t  = {io_k[1:0], 4'd0};
+
+    // ------------------------------------------------------------------
     // Buttons: synchronize, sample every 10 ms (debounce). Millisecond and microsecond
     // timers (32 bits, free running).
     // ------------------------------------------------------------------
@@ -303,7 +376,7 @@ module forth_system #(
     wire                io_pwm = io_lo && io_k[6:4] == 3'b100;   // $100100..$10013F
 
     pwm #(.CHANNELS(PWM_CH)) pwm_unit (
-        .clk(clk), .rst(per_rst), .we(io_store && io_pwm),
+        .clk(clk), .rst(per_rst), .ch_rst(unit_rst[4:1]), .we(io_store && io_pwm),
         .ch_sel(io_k[3:2]), .reg_sel(io_k[1:0]), .wdata(mem_wdata[15:0]),
         .rdata(pwm_rdata), .enable(pwm_en), .pin(pwm_pin), .out(pwm_level)
     );
@@ -333,41 +406,41 @@ module forth_system #(
     wire sel_tone = io_hi && io_k[6:2] == 5'd10;     // $1002A0
 
     uart u0 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_u0), .rd(u0_rd),
+        .clk(clk), .rst(per_rst | unit_rst[5]), .we(io_store && sel_u0), .rd(u0_rd),
         .reg_sel(io_k[1:0]), .wdata(mem_wdata), .rdata(u0_rdata), .rx_in(pin_sync[u0_rxp]),
         .tx_out(u0_tx), .enable(u0_en), .tx_pin(u0_txp), .rx_pin(u0_rxp)
     );
     uart u1 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_u1), .rd(u1_rd),
+        .clk(clk), .rst(per_rst | unit_rst[6]), .we(io_store && sel_u1), .rd(u1_rd),
         .reg_sel(io_k[1:0]), .wdata(mem_wdata), .rdata(u1_rdata), .rx_in(pin_sync[u1_rxp]),
         .tx_out(u1_tx), .enable(u1_en), .tx_pin(u1_txp), .rx_pin(u1_rxp)
     );
     spi s0 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_s0), .reg_sel(io_k[2:0]),
+        .clk(clk), .rst(per_rst | unit_rst[7]), .we(io_store && sel_s0), .reg_sel(io_k[2:0]),
         .wdata(mem_wdata), .rdata(s0_rdata), .miso_in(pin_sync[s0_misop]),
         .sck_out(s0_sck), .mosi_out(s0_mosi), .enable(s0_en),
         .sck_pin(s0_sckp), .mosi_pin(s0_mosip), .miso_pin(s0_misop)
     );
     spi s1 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_s1), .reg_sel(io_k[2:0]),
+        .clk(clk), .rst(per_rst | unit_rst[8]), .we(io_store && sel_s1), .reg_sel(io_k[2:0]),
         .wdata(mem_wdata), .rdata(s1_rdata), .miso_in(pin_sync[s1_misop]),
         .sck_out(s1_sck), .mosi_out(s1_mosi), .enable(s1_en),
         .sck_pin(s1_sckp), .mosi_pin(s1_mosip), .miso_pin(s1_misop)
     );
     i2c i2c0 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_i2c), .reg_sel(io_k[1:0]),
+        .clk(clk), .rst(per_rst | unit_rst[9]), .we(io_store && sel_i2c), .reg_sel(io_k[1:0]),
         .wdata(mem_wdata), .rdata(i2c_rdata),
         .scl_in(pin_sync[i2c_sclp]), .sda_in(pin_sync[i2c_sdap]),
         .scl_low(i2c_scl_low), .sda_low(i2c_sda_low), .enable(i2c_en),
         .scl_pin(i2c_sclp), .sda_pin(i2c_sdap)
     );
     dds dds0 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_dds), .reg_sel(io_k[0]),
+        .clk(clk), .rst(per_rst | unit_rst[10]), .we(io_store && sel_dds), .reg_sel(io_k[0]),
         .wdata(mem_wdata), .rdata(dds_rdata), .dds_clk(pg_clk),
         .out(dds_out), .enable(dds_en), .pin(dds_pinp)
     );
     tone tone0 (
-        .clk(clk), .rst(per_rst), .we(io_store && sel_tone), .reg_sel(io_k[1:0]),
+        .clk(clk), .rst(per_rst | unit_rst[11]), .we(io_store && sel_tone), .reg_sel(io_k[1:0]),
         .wdata(mem_wdata), .rdata(tone_rdata), .aud_pwm(aud[0]), .aud_sd(aud[1])
     );
 
@@ -451,7 +524,7 @@ module forth_system #(
     wire [31:0] pg_status, pg_out;
 
     patgen pg (
-        .clk(clk), .rst(per_rst), .we(io_store && io_pg), .reg_sel(io_k[3:0]),
+        .clk(clk), .rst(per_rst | unit_rst[12]), .we(io_store && io_pg), .reg_sel(io_k[3:0]),
         .wdata(mem_wdata[15:0]), .rdata(pg_rdata), .arm_status(pg_status), .arm_out(pg_out),
         .pg_clk(pg_clk), .trig_pins({ck_x, ck_ioh, 6'd0, ck_a, ck_io}), .trig_btn(btn),
         .pins(pmod)
@@ -464,6 +537,8 @@ module forth_system #(
     //                                us timer, core number
     //   k 20, 21   $100050, $100054  mailbox data and status
     //   k 24..31   $100060..$10007C  locks 0..7
+    //   k 80..94   $100140..$100178  GPIO set, clear and toggle (no read-modify-write)
+    //   k 192..    $100300..$1003BC  pin owners, $1003C0..$1003FC peripheral owners
     //   k 8 + 4p   $100020 + 16p     port p: +0 pin levels, +4 output latch, +8 direction
     //   k 32..63   $100080..$1000FC  XADC status registers 0..31
     //   k 64 + 4c  $100100 + 16c     PWM channel c: +0/+4 period, +8 duty, +12 control
@@ -474,6 +549,7 @@ module forth_system #(
     wire [2:0] io_port = io_k[4:2] - 3'd2;
     wire [6:0] io_bit0 = {io_port, 4'd0};                 // first pin of the port
 
+    integer pr;
     always @(posedge clk) begin
         if (per_rst) begin
             led     <= 4'd0;
@@ -493,7 +569,22 @@ module forth_system #(
                     2'd2: pin_dir[io_bit0 +: 16] <= mem_wdata[15:0];
                     default: ;
                 endcase
+            if (io_gset)
+                case (io_k[1:0])
+                    2'd0: pin_out[gbit_s +: 16] <= pin_out[gbit_s +: 16] |  mem_wdata[15:0];
+                    2'd1: pin_out[gbit_s +: 16] <= pin_out[gbit_s +: 16] & ~mem_wdata[15:0];
+                    2'd2: pin_dir[gbit_s +: 16] <= pin_dir[gbit_s +: 16] |  mem_wdata[15:0];
+                    2'd3: pin_dir[gbit_s +: 16] <= pin_dir[gbit_s +: 16] & ~mem_wdata[15:0];
+                endcase
+            if (io_gtog)
+                pin_out[gbit_t +: 16] <= pin_out[gbit_t +: 16] ^ mem_wdata[15:0];
         end
+        // the pins of a core being reset: inputs again, latch 0
+        for (pr = 0; pr < 48; pr = pr + 1)
+            if (pin_rst[pr]) begin
+                pin_dir[pr] <= 1'b0;
+                pin_out[pr] <= 1'b0;
+            end
 
         if (sel_u0)
             io_rdata <= u0_rdata;
@@ -509,6 +600,11 @@ module forth_system #(
             io_rdata <= dds_rdata;
         else if (sel_tone)
             io_rdata <= tone_rdata;
+        else if (sel_pin)
+            io_rdata <= pn >= 6'd48 || !pt_taken[pn] ? 32'd0
+                      : {27'd0, pt_core[pn] != owner, pt_id[pn]};
+        else if (sel_unit)
+            io_rdata <= !ut_taken[un] ? 32'd0 : ut_core[un] == owner ? 32'd1 : 32'd2;
         else if (io_hi)
             io_rdata <= 32'd0;
         else if (io_mail)

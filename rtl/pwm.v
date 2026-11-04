@@ -17,6 +17,7 @@ module pwm #(
 ) (
     input  wire                  clk,
     input  wire                  rst,
+    input  wire [CHANNELS-1:0]   ch_rst,      // reset one channel (its owner core restarts)
     input  wire                  we,          // a CPU store to this block
     input  wire [1:0]            ch_sel,      // mem_addr[4:3]
     input  wire [1:0]            reg_sel,     // mem_addr[2:1]
@@ -39,17 +40,17 @@ module pwm #(
         end
 
     always @(posedge clk) begin
-        if (rst) begin
-            for (i = 0; i < CHANNELS; i = i + 1) begin
-                lo_hold[i] <= 16'd0; period[i] <= 32'd0; duty[i] <= 16'd0; control[i] <= 16'd0;
-            end
-        end else if (we)
+        if (we && !rst)
             case (reg_sel)
                 2'd0: lo_hold[ch_sel] <= wdata;
                 2'd1: period[ch_sel]  <= {wdata, lo_hold[ch_sel]};
                 2'd2: duty[ch_sel]    <= wdata;
                 2'd3: control[ch_sel] <= wdata;
             endcase
+        for (i = 0; i < CHANNELS; i = i + 1)
+            if (rst || ch_rst[i]) begin
+                lo_hold[i] <= 16'd0; period[i] <= 32'd0; duty[i] <= 16'd0; control[i] <= 16'd0;
+            end
     end
 
     always @* begin
@@ -72,6 +73,7 @@ module pwm #(
             reg [31:0] count   = 32'd0;
             reg        level   = 1'b0;
             wire       on      = control[c][15];
+            wire       crst    = rst | ch_rst[c];
 
             always @(posedge clk) begin
                 per_s1  <= period[c] < 32'd2 ? 32'd2 : period[c];
@@ -80,10 +82,10 @@ module pwm #(
                 duty_s2 <= duty_s1;
                 prod_s2 <= per_s1 * duty_s1;
 
-                if (rst || !on) begin
+                if (crst || !on) begin
                     // ready for the first clock of a cycle: the pin is not driven meanwhile
                     count   <= 32'd0;
-                    level   <= !rst && (duty_s2 == 16'hFFFF ? per_s2 : prod_s2[47:16]) != 32'd0;
+                    level   <= !crst && (duty_s2 == 16'hFFFF ? per_s2 : prod_s2[47:16]) != 32'd0;
                     per_cur <= per_s2;
                     cmp_cur <= duty_s2 == 16'hFFFF ? per_s2 : prod_s2[47:16];
                 end else begin

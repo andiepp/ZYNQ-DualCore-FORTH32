@@ -37,6 +37,17 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   0/1/2 = free/mine/the other's), 4 KB shared RAM at `$101000`. The simulator runs both cores
   together with `--input-file1`; checked with `sim/mail0.txt`/`mail1.txt` (RTL = ISS).
   12,737 LUTs, 74 block RAMs, timing met (0.78 ns at 50 MHz).
+- **Pin and peripheral owners per core** (step 3, part 3): the pin owner table is in the
+  hardware now (`$100300 + 4n`, read 0 free, the id when this core's, 16 + id when the
+  other's), and every peripheral has an owner core (`$1003C0 + 4u`): the open words take it,
+  the close words give it back, the other core gets ` in use by the other core`. `output`
+  takes a pin as owner 15, `input` gives it back; `output input high low toggle` refuse the
+  other core's pins. GPIO uses new set/clear/toggle registers (`$100140 + 16p`,
+  `$100170 + 4p`), so the cores never undo each other's changes. A core's restart resets
+  and releases its peripherals and pins while the other core runs. New words `(owner)`,
+  `(mine)`, `unit`, `(unit)`, `unit-free`; `pin-owner` is gone. The ISS shares the board
+  I/O between its cores, and its XADC codes are truncated like the Xilinx model's.
+  13,351 LUTs; timing met with 0.136 ns at 50 MHz.
 
 ## ZYNQ-FPGA-FORTH32
 

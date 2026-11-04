@@ -72,7 +72,20 @@ Three parts, each checked before the next:
    counter ends at 1709 instead of 2000, so the test would catch a broken lock. RTL = ISS
    on both cores (2000 in the RTL too), and part 1's test still passes. Built: +252 LUTs,
    +1 block RAM; 0.779 ns slack at 50 MHz, 0.142 ns at 200 MHz.
-3. Pin and peripheral ownership per core.
+3. **Pin and peripheral ownership per core** (2026-11-04, design.md 5.3, 5.16, 7.12): the
+   pin owner table moved from the kernel into the hardware (`$100300 + 4n`: id and core,
+   taken by a write and checked by a read), peripherals have an owner core (`$1003C0 + 4u`,
+   taken by the open words, released by the close words), GPIO latches and directions are
+   changed with set/clear/toggle registers (`$100140`, `$100170`) instead of
+   read-modify-write. A core's restart resets and releases what it held; the other core
+   keeps running. Checked with `run_dual.ps1 -Input0 own0 -Input1 own1` (the other core's
+   pins read 16 + id, its peripherals refuse, releases work, 1,000 and 1,001 toggles from
+   both cores on one port all arrive), the new kernel's ISS output equals the old one on
+   every input (apart from `here` and `words`), single-core `shield`/`pwm` RTL = ISS. The
+   ISS now shares the board I/O between its two cores, and its XADC codes are truncated
+   like the Xilinx model's (`shield` had differed by 1 mV). Built: 13,351 LUTs; timing met,
+   but only 0.136 ns at 50 MHz: the I/O bus needs a register stage next. A core's restart
+   while the other runs is not simulated yet (it needs the ARM's restart, step 4).
 
 ## Step 3 onwards: notes
 

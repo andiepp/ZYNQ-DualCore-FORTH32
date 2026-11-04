@@ -135,17 +135,18 @@ clock and that the compiler never has to schedule around anything except the sto
 ### 2.2 Resources used
 
 From the implementation report of the two-core design (ZYNQ-DualCore-FORTH32 step 3, parts 1
-and 2, `build/hw/utilization.rpt`). The single core with the divider (step 2) used 8,321 LUTs,
+to 3, `build/hw/utilization.rpt`). The single core with the divider (step 2) used 8,321 LUTs,
 4,409 flip-flops, 41 block RAMs and 15 DSPs; the second core with its RAM, FIFOs and the I/O
 arbiter added 4,164 LUTs, 688 flip-flops, 32 block RAMs and 6 DSPs; the mailboxes, locks and
-shared RAM another 252 LUTs, 41 flip-flops and 1 block RAM:
+shared RAM another 252 LUTs, 41 flip-flops and 1 block RAM; the pin and peripheral owners
+with the GPIO set/clear registers 614 LUTs and 131 flip-flops:
 
 | Resource | Used | Available | % | Mostly in |
 |---|---|---|---|---|
-| Slice LUTs | 12,737 | 53,200 | 23.9 | two CPU datapaths with FPU and divider, peripherals, pin router |
-| of which LUT RAM | 418 | 17,400 | 2.4 | each core's three 32-entry stacks, the FIFOs and mailboxes |
-| Flip-flops | 5,138 | 106,400 | 4.8 | |
-| Slices | 4,059 | 13,300 | 30.5 | |
+| Slice LUTs | 13,351 | 53,200 | 25.1 | two CPU datapaths with FPU and divider, peripherals, pin router, owner tables |
+| of which LUT RAM | 426 | 17,400 | 2.4 | each core's three 32-entry stacks, the FIFOs and mailboxes |
+| Flip-flops | 5,269 | 106,400 | 5.0 | |
+| Slices | 4,170 | 13,300 | 31.4 | |
 | Block RAM (36 Kb) | 74 | 140 | 52.9 | 2 × 32 for the two 128 KB Forth RAMs, 9 for the pattern memory, 1 for the shared RAM |
 | DSP48 | 21 | 220 | 9.5 | per core the 32 × 32 multiplier and the FPU significand multiplier; PWM duty products, tone volume |
 | Bonded I/O pins | 94 | 125 | 75.2 | LEDs 10, buttons/switches 6, shield 42, analog 18, Pmods 16, audio 2 |
@@ -159,14 +160,15 @@ about 40,000 LUTs are still free.
 
 | Clock | Worst setup slack | Worst hold slack | Critical path |
 |---|---|---|---|
-| FCLK0, 50 MHz (20 ns) | 0.779 ns | 0.025 ns | core 1's RAM output → next T → I/O bus → pattern generator memory enable |
-| FCLK1, 200 MHz (5 ns) | 0.142 ns | 0.098 ns | pattern generator: fetch register → pattern memory address |
+| FCLK0, 50 MHz (20 ns) | 0.136 ns | 0.033 ns | core 1's float stack pointer → next T → I/O bus → pattern generator memory enable |
+| FCLK1, 200 MHz (5 ns) | 0.325 ns | 0.113 ns | pattern generator: fetch register → pattern memory address |
 
-All constraints are met (two cores with mailboxes, locks and shared RAM). The 50 MHz margin
-went from 3.2 ns (one core) to 0.9 ns with the second core and 0.8 ns with part 2: the worst
-path runs from a core through the arbiter's choice of the bus owner into the shared I/O
-decode, the cost of sharing one I/O bus. If later steps make it negative,
-a register stage on the bus (one more clock for an I/O access) is the remedy. The 200 MHz
+All constraints are met (two cores with mailboxes, locks, shared RAM and owners), but the
+50 MHz margin is nearly gone: 3.2 ns with one core, 0.9 ns with the second, 0.8 ns with
+part 2, 0.14 ns with the owner tables. The worst path runs from a core's next T through the
+arbiter's choice of the bus owner into the shared I/O decode, the cost of sharing one I/O
+bus combinationally. A register stage on the bus (one more clock for an I/O access) is the
+remedy, and is planned before more logic goes onto the bus. The 200 MHz
 pattern generator has never had much margin (0.000 ns in 3.1, 0.464 ns in step 2) and
 depends on the placement around it.
 
@@ -623,6 +625,10 @@ the instruction consumes the value, and belongs to that instruction's core.
 | `$100054` | bit 0 = a word is waiting, bit 1 = room to send | – |
 | `$100060 + 4n` | lock n (0..7): 0 free, 1 held by this core, 2 by the other | 1 = take it if free, 0 = release it (holder only) |
 | `$101000..$101FFF` | shared RAM, 4 KB, words and bytes | the same |
+| `$100140 + 16p` | – | port p: +0 set latch bits, +4 clear latch bits, +8 set direction bits, +12 clear direction bits (no read-modify-write) |
+| `$100170 + 4p` | – | port p: toggle latch bits |
+| `$100300 + 4n` | pin n's owner: 0 free, 1..15 this core's (the id), 16 + id the other core's | an id 1..15 takes the pin if it is free or this core's; 0 releases this core's pin |
+| `$1003C0 + 4u` | peripheral u's owner (1..4 PWM 0..3, 5/6 UART, 7/8 SPI, 9 I²C, 10 DDS, 11 tone, 12 pattern generator): 0 free, 1 this core's, 2 the other's | 1 takes it if free, 0 releases it (holder only) |
 | `$100020 + 16p` | port p (0..2): pin levels, synchronized; pin n = bit n mod 16 of port n / 16 | – |
 | `$100024 + 16p` | port p: output latch | the same |
 | `$100028 + 16p` | port p: direction, 1 = output (all 0 after reset) | the same |
@@ -850,8 +856,13 @@ core to its start state: registers, stack pointers and its terminal FIFOs. The s
 directions (all inputs), every PWM channel off, the UARTs, SPI masters, I²C master, DDS and
 tone generator disabled with their default settings, and the pattern generator stopped. The
 timers and the XADC scanner keep running. With core 1 held, as by a single-core ARM program,
-a restart of core 0 therefore begins on a quiet board as before. (Which peripherals a
-restart of one core releases while the other runs comes with the pin ownership per core.)
+a restart of core 0 therefore begins on a quiet board as before.
+
+When only one core is reset, the other keeps running, and only what the reset core held is
+undone (`pin_rst`, `unit_rst`): its peripherals in the owner table are reset to their
+start state (a PWM channel by its own reset input, `ch_rst`), and its pins become inputs
+with their latch 0; both are released. Pins and peripherals the core used without taking
+them (a `high` on a pin it never made an output, say) stay as they are.
 
 ## 6 The ARM side
 
@@ -1375,14 +1386,29 @@ floating point.
 
 ### 7.12 Pin ownership and the serial words
 
-The kernel keeps a 48-byte table `pin-owner`: 0 = free, 1..4 = PWM channel 0..3, 5/6 = UART
-0/1, 7/8 = SPI 0/1, 9 = I²C, 10 = DDS.
+The owner of each pin is kept by the hardware for both cores (`$100300 + 4n`, section 5.3):
+0 = free, 1..4 = PWM channel 0..3, 5/6 = UART 0/1, 7/8 = SPI 0/1, 9 = I²C, 10 = DDS,
+15 = an output pin, and 16 more when the other core owns it. A write of an id takes the pin
+if it is free or already this core's; a write of 0 releases it. That makes a claim
+atomic between the cores: write, then read back.
 
 ```forth
-: (free) ( pin id -- pin ) over owner ?dup if <> if ."  pin taken" cr abort then else drop then ;
-: claim ( pin id -- ) 2dup (free) drop swap pin-owner + c! ;
-: release ( id -- ) 48 0 do i pin-owner + c@ over = if 0 i pin-owner + c! then loop drop ;
+: (owner) ( pin -- a ) cells $100300 + ;
+: owner ( pin -- id ) dup pin 2drop (owner) @ ;
+: (mine) ( pin -- pin ) dup owner 15 u> if ."  pin taken" cr abort then ;
+: (free) ( pin id -- pin )
+  over owner dup 0= over 15 = or if 2drop else <> if ."  pin taken" cr abort then then ;
+: claim ( pin id -- ) 2dup (free) (owner) ! (mine) drop ;
+: release ( id -- ) 48 0 do i (owner) @ over = if 0 i (owner) ! then loop drop ;
 ```
+
+`output` takes a free pin as owner 15 and `input` gives it back; the GPIO words refuse the
+other core's pins and change latches and directions with the set/clear registers, so the
+cores never undo each other's changes to a port. A peripheral has an owner core too
+(`$1003C0 + 4u`, read like a lock): the open words take it with `(unit)`, the close words
+check it and let it go (`unit-free`), so one core cannot open, take over or switch off what
+the other opened. The settings words (`pwm-hz`, `spi-mode`, `uart-emit` …) do not check, to
+stay as short as before; the hardware does not enforce ownership on register writes.
 
 Every *open* word (`pwm-pin`, `uart-open`, `spi-open`, `i2c-open-pins`, `dds-pin`) first
 releases what its peripheral held, then checks **all** its pins with `(free)` before it claims

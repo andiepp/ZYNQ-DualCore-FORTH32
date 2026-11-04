@@ -908,6 +908,10 @@ Every pin is an **input after start-up** and after Ctrl-R. `output` makes it dri
 level of its output latch, which starts low. A pin that a PWM channel, a serial interface
 or the DDS owns (sections 5.13, 5.16, 5.17) follows that peripheral instead.
 
+With two cores, `output` also makes the pin this core's (owner 15, section 5.16, *Pin
+owners*), and `input` gives it back. `output`, `input`, `high`, `low` and `toggle` refuse a
+pin the other core owns with ` pin taken`; `pin@` reads any pin.
+
 | Word | Stack | Description |
 |---|---|---|
 | `output` | `( pin -- )` | Make the pin an output. |
@@ -1518,8 +1522,18 @@ $3B of a sensor at $68: `$68 0 i2c-addr drop $3B i2c-write drop $68 1 i2c-addr d
 five times `-1 i2c-read` and once `0 i2c-read`, then `i2c-stop`.
 
 **Pin owners.** `owner ( pin -- id )` shows who owns a pin: 0 nobody (the pin is GPIO),
-1..4 PWM channels 0..3, 5 UART 0, 6 UART 1, 7 SPI 0, 8 SPI 1, 9 I2C, 10 the DDS. The board
+1..4 PWM channels 0..3, 5 UART 0, 6 UART 1, 7 SPI 0, 8 SPI 1, 9 I2C, 10 the DDS, 15 an
+output pin; 16 more when the other core owns it (21 = the other core's UART 0). The board
 view in the app labels owned pins (section 2.9).
+
+**Peripheral owners.** A PWM channel, UART, SPI master, the I2C master, the DDS, the tone
+generator and the pattern generator belong to the core that opened or started it, until it
+is closed or stopped: `unit ( u -- a )` is the owner register of peripheral u (the ids
+above, 11 tone, 12 pattern generator), and `unit @` is 0 (free), 1 (this core's) or 2 (the
+other core's). The other core's open, close and stop words give ` in use by the other
+core`; the settings words (`pwm-hz`, `spi-mode`, `uart-emit` and the like) do not check,
+so leave the other core's peripherals alone. When a core restarts, its peripherals are reset and released and its pins become
+inputs again; the other core keeps running.
 
 ### 5.17 DDS and tone generator
 
@@ -1793,12 +1807,16 @@ These words are visible in `words` and can be used, but they mainly exist for th
 
 | Word | Stack | Description |
 |---|---|---|
-| `pin-owner` | `( -- a )` | 48 bytes: the owner of each pin (section 5.16, *Pin owners*). |
-| `(free)` | `( pin id -- pin )` | ` pin taken` unless the pin is free or owned by id. |
-| `claim` | `( pin id -- )` | Make id the owner of the pin. |
+| `(owner)` | `( pin -- a )` | The pin's owner register (`$100300 + 4 * pin`, section 5.16, *Pin owners*). |
+| `(mine)` | `( pin -- pin )` | ` pin taken` if the other core owns the pin. |
+| `(free)` | `( pin id -- pin )` | ` pin taken` unless the pin is free, an output pin of this core, or owned by id. |
+| `claim` | `( pin id -- )` | Make id the owner of the pin (` pin taken` if the other core got it first). |
 | `(claim)` | `( pin id -- pin )` | `claim`, keeping the pin. |
 | `release` | `( id -- )` | Free every pin id owns. |
 | `cid` | `( -- a )` | The owner id while `spi-open` claims its pins. |
+| `unit` | `( u -- a )` | The owner register of peripheral u (section 5.16, *Peripheral owners*). |
+| `(unit)` | `( u -- )` | Take peripheral u for this core; ` in use by the other core` if the other core has it. |
+| `unit-free` | `( u -- )` | Let peripheral u go. |
 | `(i2c)` | `( cmd -- status )` | Give the I2C master a command and wait until it is done; ` i2c timeout` when a slave held SCL low too long. |
 | `(ack?)` | `( f -- )` | ` no ack` (after a stop) if f is false. |
 | `dds-sync` | `( -- )` | Wait until the DDS took over the last change (it runs on its own clock). |
@@ -2136,7 +2154,8 @@ For the power-up, build `BOOT.bin` and write it to flash (see the README).
 | A result is `NaN`, `Inf` or 0 unexpectedly | An operation outside the range: 0/0, the square root or logarithm of a negative number, an overflow beyond 3.4 × 10^38 (infinity) or a result below 1.2 × 10^-38 (zero). Every later operation passes a NaN on (section 5.15, *Semantics*). |
 | ` float stack overflow`, or floats left over | Words that leave floats behind, for example a comparison expected to consume them. `f.s` shows the float stack; the app shows it under the data stack. |
 | `fsin` of a large angle is wrong | The argument reduction is accurate for \|x\| up to about 10000 (section 5.15, *Accuracy*). Reduce large angles yourself, in whole turns, before converting them to radians. |
-| ` pin taken` | The pin belongs to another peripheral or PWM channel: `owner` tells which (section 5.16). Close that one first, or use another pin. |
+| ` pin taken` | The pin belongs to another peripheral or PWM channel, or to the other core: `owner` tells which (section 5.16). Close that one first, or use another pin. |
+| ` in use by the other core` | The other core opened this peripheral (section 5.16, *Peripheral owners*). |
 | ` no ack` from `i2c@` or `i2c!` | No device answers at that address: check the wiring, the address (7-bit: `$68`, not `$D0`) and the pull-ups; `i2c-scan` lists what answers. |
 | ` i2c timeout` | SCL stayed low for 21 ms: a slave holds it, or SCL is shorted or lacks its pull-up. |
 | A UART receives garbage, or `uart-status` shows bit 4 | The baud rates differ, or TX and RX are swapped. Both sides need a common GND. |

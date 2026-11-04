@@ -698,9 +698,10 @@ PIN_IDLE = 0xFFFF_FC00_3FFF
 # Simulated XADC results (12-bit codes by status register), the same values as
 # sim/xadc_stim.txt: 45 C, VCCINT 1.0 V, VCCAUX 1.8 V, VCCBRAM 1.0 V, VCCPINT 1.0 V,
 # VCCPAUX 1.8 V, VCCO_DDR 1.5 V; A0 = 1.65 V, A1 = 3.3 V at the shield (0.497 V and
-# 0.994 V after the divider), A6/A7 = 0.25 V.
-XADC_SIM = {0x00: 2585, 0x01: 1365, 0x02: 2458, 0x06: 1365, 0x0D: 1365, 0x0E: 2458,
-            0x0F: 2048, 0x11: 2036, 0x19: 4071, 0x1C: 1024}
+# 0.994 V after the divider), A6/A7 = 0.25 V. The codes are truncated, as the Xilinx XADC
+# simulation model converts them (VCCAUX 2457.6 -> 2457), so the RTL testbench agrees.
+XADC_SIM = {0x00: 2585, 0x01: 1365, 0x02: 2457, 0x06: 1365, 0x0D: 1365, 0x0E: 2457,
+            0x0F: 2048, 0x11: 2035, 0x19: 4071, 0x1C: 1024}
 
 
 MAIL = IO_BASE + 0x50          # mailbox data, $100054 its status, $100060.. the locks
@@ -714,9 +715,26 @@ class Shared:
         self.mail = [[], []]                             # mail[k]: words sent to core k
         self.locks = [None] * 8                          # the holding core, or None
         self.shm = bytearray(4096)
+        self.pins = [None] * 48                          # (core, id) of a pin's owner
+        self.units = [None] * 16                         # the core owning a peripheral
+
+
+# The board's I/O state lives in Shared, so in a two-core run both cores see one
+# board, as in the hardware (only the terminal and the core number are per core)
+BOARD_STATE = ('leds', 'rgb', 'pin_out', 'pin_dir', 'pwm', 'uart_rx', 'uart_regs',
+               'spi_regs', 'i2c_regs', 'dds_regs', 'tone_regs')
+
+
+def _board(name):
+    return property(lambda self: getattr(self.shared, name),
+                    lambda self, v: setattr(self.shared, name, v))
 
 
 class Machine:
+    for _name in BOARD_STATE:
+        locals()[_name] = _board(_name)
+    del _name
+
     def __init__(self, mem, rx=b'', core=0, shared=None):
         self.core = core                                 # I/O register 7, the core number
         self.shared = shared or Shared()
@@ -830,6 +848,13 @@ class Machine:
         return 0
 
     def io_read_hi(self, k):
+        sh = self.shared
+        if 64 <= k < 112:                                # pin owners
+            o = sh.pins[k - 64] if k - 64 < 48 else None
+            return 0 if o is None else o[1] + (16 if o[0] != self.core else 0)
+        if 112 <= k < 128:                               # peripheral owners
+            o = sh.units[k - 112]
+            return 0 if o is None else 1 if o == self.core else 2
         if k < 8:                                        # UART 0, 1
             u, r = k >> 2, k & 3
             if r == 0:
@@ -850,6 +875,24 @@ class Machine:
         return 0
 
     def store_hi(self, k, v):
+        sh = self.shared
+        if 64 <= k < 112:
+            n, o, idv = k - 64, None, v & 15
+            if n < 48:
+                o = sh.pins[n]
+                if idv and (o is None or o[0] == self.core):
+                    sh.pins[n] = (self.core, idv)
+                elif not idv and o is not None and o[0] == self.core:
+                    sh.pins[n] = None
+            return
+        if 112 <= k < 128:
+            u, o = k - 112, sh.units[k - 112]
+            if v & 1:
+                if o is None:
+                    sh.units[u] = self.core
+            elif o == self.core:
+                sh.units[u] = None
+            return
         if k < 8:
             u, r = k >> 2, k & 3
             if r == 0:
@@ -894,6 +937,18 @@ class Machine:
                     ch[sel] = v
                 return
             sh = self.shared
+            if 80 <= k < 92 and (k - 80) >> 2 < 3 or 92 <= k < 95:
+                if k < 92:
+                    port, sel = (k - 80) >> 2, k & 3
+                else:
+                    port, sel = k - 92, 4
+                bits = (v & 0xFFFF) << (16 * port)
+                if sel == 0:   self.pin_out |= bits
+                elif sel == 1: self.pin_out &= ~bits
+                elif sel == 2: self.pin_dir |= bits
+                elif sel == 3: self.pin_dir &= ~bits
+                else:          self.pin_out ^= bits
+                return
             if k == 20:
                 box = sh.mail[1 - self.core]
                 if len(box) < 32:

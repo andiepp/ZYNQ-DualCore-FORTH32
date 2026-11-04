@@ -156,25 +156,42 @@ create tib 84 allot
 : pin ( n -- mask a )
   dup 0 20 within over 26 48 within or 0= if ."  bad pin" cr abort then
   dup 15 and 1 swap lshift swap 4 rshift 4 lshift $100020 + ;
-: output ( n -- ) pin 8 + bset ;
-: input ( n -- ) pin 8 + bclr ;
-: high ( n -- ) pin 4 + bset ;
-: low ( n -- ) pin 4 + bclr ;
-: toggle ( n -- ) pin 4 + dup @ rot xor swap ! ;
+
+\ Pin owners, kept by the hardware for both cores at $100300 + 4n: 0 free, 1..15
+\ this core's (1..4 PWM 0..3, 5 UART 0, 6 UART 1, 7 SPI 0, 8 SPI 1, 9 I2C, 10 DDS,
+\ 15 an output pin), 16 + id the other core's. Writing an id takes a pin that is
+\ free or this core's, writing 0 releases this core's pin. A pin given to a
+\ peripheral belongs to it until the peripheral lets it go: its latch and
+\ direction no longer count.
+: (owner) ( pin -- a ) cells $100300 + ;
+: owner ( pin -- id ) dup pin 2drop (owner) @ ;
+: (mine) ( pin -- pin ) dup owner 15 u> if ."  pin taken" cr abort then ;
+\ The latch and direction are changed with set and clear registers ($100140 +
+\ 16p), so the two cores never undo each other's changes to a port
+: output ( n -- ) dup owner 0= if 15 over (owner) ! then (mine) pin $128 + ! ;
+: input ( n -- ) (mine) dup pin $12C + ! dup owner 15 = if 0 swap (owner) ! else drop then ;
+: high ( n -- ) (mine) pin $120 + ! ;
+: low ( n -- ) (mine) pin $124 + ! ;
+: toggle ( n -- ) (mine) dup pin drop swap 4 rshift cells $100170 + ! ;
 : pin@ ( n -- f ) pin @ and 0<> ;
 : pin! ( f n -- ) swap if high else low then ;
 
-\ A pin given to a peripheral belongs to it until the peripheral lets it go: its
-\ latch and direction no longer count. Owners: 1..4 PWM 0..3, 5 UART 0, 6 UART 1,
-\ 7 SPI 0, 8 SPI 1, 9 I2C, 10 DDS.
-create pin-owner 48 allot
-: owner ( pin -- id ) dup pin 2drop pin-owner + c@ ;
 \ (free) refuses a pin another owner has; the open words check every pin first,
-\ so a refused one leaves nothing half claimed
-: (free) ( pin id -- pin ) over owner ?dup if <> if ."  pin taken" cr abort then else drop then ;
-: claim ( pin id -- ) 2dup (free) drop swap pin-owner + c! ;
+\ so a refused one leaves nothing half claimed (unless the other core takes it in
+\ between: then claim, which checks again after the hardware's answer, refuses)
+: (free) ( pin id -- pin )
+  over owner dup 0= over 15 = or if 2drop else <> if ."  pin taken" cr abort then then ;
+: claim ( pin id -- ) 2dup (free) (owner) ! (mine) drop ;
 : (claim) ( pin id -- pin ) over swap claim ;
-: release ( id -- ) 48 0 do i pin-owner + c@ over = if 0 i pin-owner + c! then loop drop ;
+: release ( id -- ) 48 0 do i (owner) @ over = if 0 i (owner) ! then loop drop ;
+
+\ Peripherals have an owner core too, at $1003C0 + 4u (u: the ids above, 11 tone,
+\ 12 pattern generator): 0 free, 1 this core's, 2 the other's. The open and close
+\ words take it; the close words let it go. A core's restart releases its
+\ peripherals and pins and resets them.
+: unit ( u -- a ) cells $1003C0 + ;
+: (unit) ( u -- ) 1 over unit ! unit @ 1 <> if ."  in use by the other core" cr abort then ;
+: unit-free ( u -- ) 0 swap unit ! ;
 
 \ ---------------------------------------------------------------------------
 \ Durations and periods are double cells ( lo hi ) meaning lo + hi*65536, so
@@ -202,8 +219,8 @@ create pin-owner 48 allot
   >r 50000 swap u/mod nip 0 r> pwm-clocks ;
 : pwm-duty ( permille ch -- ) >r 0 max 1000 min 65535 * 1000 / r> pwm 8 + ! ;
 : pwm-pin ( pin ch -- )
-  dup pwm drop dup 1+ release >r r@ 1+ (claim) $8000 or r> pwm 12 + ! ;
-: pwm-off ( ch -- ) dup pwm 12 + 0 swap ! 1+ release ;
+  dup pwm drop dup 1+ (unit) dup 1+ release >r r@ 1+ (claim) $8000 or r> pwm 12 + ! ;
+: pwm-off ( ch -- ) dup pwm drop dup 1+ (unit) dup pwm 12 + 0 swap ! 1+ dup release unit-free ;
 
 \ ---------------------------------------------------------------------------
 \ Serial interfaces at $100200 (rtl/uart.v, spi.v, i2c.v): every signal on any
@@ -214,12 +231,12 @@ create pin-owner 48 allot
 
 : uart ( u -- a ) dup 2 u< 0= if ."  bad uart" cr abort then 4 lshift $100200 + ;
 : uart-open ( baud tx rx u -- )
-  dup uart drop dup >r 5 + release
+  dup uart drop dup >r 5 + dup (unit) release
   r@ 5 + (free) swap r@ 5 + (free) swap
   r@ 5 + (claim) 8 lshift swap r@ 5 + (claim) or $8000 or
   swap dup 0= if ."  bad baud" cr abort then 50000000 swap u/mod nip
   r@ uart 8 + ! r> uart 12 + ! ;
-: uart-close ( u -- ) dup uart 12 + 0 swap ! 5 + release ;
+: uart-close ( u -- ) dup uart drop dup 5 + (unit) dup uart 12 + 0 swap ! 5 + dup release unit-free ;
 : uart-emit ( c u -- ) uart begin dup 4 + @ 2 and until ! ;
 : uart-key? ( u -- f ) uart 4 + @ 1 and 0<> ;
 : uart-key ( u -- c ) uart begin dup 4 + @ 1 and until @ $FF and ;
@@ -231,11 +248,11 @@ create pin-owner 48 allot
 : spi ( s -- a ) dup 2 u< 0= if ."  bad spi" cr abort then 5 lshift $100220 + ;
 variable cid
 : spi-open ( sck mosi miso s -- )
-  dup spi drop dup >r 7 + dup cid ! release
+  dup spi drop dup >r 7 + dup cid ! dup (unit) release
   cid @ (free) >r cid @ (free) >r cid @ (free) r> r>
   cid @ (claim) 16 lshift swap cid @ (claim) 8 lshift or swap cid @ (claim) or
   $80000000 or r> spi 16 + ! ;
-: spi-close ( s -- ) dup spi 16 + 0 swap ! 7 + release ;
+: spi-close ( s -- ) dup spi drop dup 7 + (unit) dup spi 16 + 0 swap ! 7 + dup release unit-free ;
 : spi-hz ( hz s -- )
   >r dup 0= if ."  bad frequency" cr abort then
   25000000 swap u/mod swap if 1+ then 2 max r> spi 12 + ! ;
@@ -253,12 +270,12 @@ variable cid
   $100260 ! begin $100260 @ dup 0< while drop repeat
   dup $200 and if ."  i2c timeout" cr abort then ;
 : i2c-open-pins ( hz scl sda -- )
-  9 release 9 (free) swap 9 (free) swap
+  9 (unit) 9 release 9 (free) swap 9 (free) swap
   9 (claim) 8 lshift swap 9 (claim) or $8000 or >r
   dup 0= if ."  bad frequency" cr abort then
   12500000 swap u/mod swap if 1+ then 2 + $100264 ! r> $100268 ! ;
 : i2c-open ( hz -- ) pin-scl pin-sda i2c-open-pins ;
-: i2c-close ( -- ) 0 $100268 ! 9 release ;
+: i2c-close ( -- ) 9 (unit) 0 $100268 ! 9 release 9 unit-free ;
 : i2c-start ( -- ) $100 (i2c) drop ;
 : i2c-stop ( -- ) $200 (i2c) drop ;
 : i2c-write ( b -- ack? ) $FF and $300 or (i2c) $100 and 0<> ;
@@ -282,12 +299,12 @@ variable cid
 
 : dds-sync ( -- ) begin $100284 @ 0< 0= until ;
 : dds-hz ( F: hz -- ) 21.47483648e f* fround f>u $100280 ! dds-sync ;
-: dds-pin ( pin -- ) 10 release 10 (claim) 8 lshift 1 or $100284 ! dds-sync ;
-: dds-off ( -- ) 0 $100284 ! 10 release dds-sync ;
+: dds-pin ( pin -- ) 10 (unit) 10 release 10 (claim) 8 lshift 1 or $100284 ! dds-sync ;
+: dds-off ( -- ) 10 (unit) 0 $100284 ! 10 release 10 unit-free dds-sync ;
 
 0 constant sine   1 constant square   2 constant triangle   3 constant sawtooth
-: tone ( F: hz -- ) 85.89934592e f* fround f>u $1002A0 ! $1002A4 @ 1 or $1002A4 ! ;
-: tone-off ( -- ) $1002A4 @ -2 and $1002A4 ! ;
+: tone ( F: hz -- ) 11 (unit) 85.89934592e f* fround f>u $1002A0 ! $1002A4 @ 1 or $1002A4 ! ;
+: tone-off ( -- ) 11 (unit) $1002A4 @ -2 and $1002A4 ! 11 unit-free ;
 : wave ( n -- ) 3 and 2* $1002A4 @ 1 and or $1002A4 ! ;
 : volume ( percent -- ) 0 max 100 min 65535 * 100 / $1002A8 ! ;
 : beep ( ms -- ) ( F: hz -- ) tone ms tone-off ;
@@ -321,8 +338,8 @@ variable cid
 : pg-jump ( out d target -- ) $FFF and $2000 or 0 (pg) ;
 : pg-wait ( out d -- ) $3000 0 (pg) ;
 : pg-end ( out -- ) 0 0 $4000 0 (pg) ;
-: pg-start ( -- ) 1 $100180 ! pg-sync ;
-: pg-stop ( -- ) 2 $100180 ! pg-sync ;
+: pg-start ( -- ) 12 (unit) 1 $100180 ! pg-sync ;
+: pg-stop ( -- ) 12 (unit) 2 $100180 ! pg-sync 12 unit-free ;
 : pg-trig ( -- ) 4 $100180 ! pg-sync ;
 : pg-enable ( mask -- ) $10019C ! pg-sync ;
 : pg-idle ( levels -- ) $1001A0 ! pg-sync ;

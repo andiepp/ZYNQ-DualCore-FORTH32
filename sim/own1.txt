@@ -1,0 +1,12 @@
+$100050 constant mail  $100054 constant mail?
+: send ( x -- ) begin mail? @ 2 and until mail ! ;
+: receive ( -- x ) begin mail? @ 1 and until mail @ ;
+receive .  3 owner . 5 owner . 26 owner . 1 unit @ . 5 unit @ .
+3 high
+115200 28 29 0 uart-open
+115200 28 29 1 uart-open 28 owner . 6 unit @ .
+26 1 pwm-pin
+0 pwm-off
+9 output 9 owner .  2 send
+: tog 1001 0 do 9 toggle loop ;  receive . tog 4 send
+receive . 3 owner . 5 owner . 26 owner . 1 unit @ .

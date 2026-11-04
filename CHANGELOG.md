@@ -48,6 +48,11 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   `(mine)`, `unit`, `(unit)`, `unit-free`; `pin-owner` is gone. The ISS shares the board
   I/O between its cores, and its XADC codes are truncated like the Xilinx model's.
   13,351 LUTs; timing met with 0.136 ns at 50 MHz.
+- **Register stage on the I/O bus**: the cores' I/O requests are registered and served in
+  the next clock, so the decode no longer hangs off the cores' next-T logic. An I/O access
+  costs one clock more; the 50 MHz margin is back to 3.974 ns (from 0.136 ns). The arbiter's
+  store hold is gone, and the CPU is its step-2 self again. The CPU's stacks start at 0, as
+  in the simulator.
 
 ## ZYNQ-FPGA-FORTH32
 

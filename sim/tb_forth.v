@@ -307,8 +307,8 @@ module tb;
     end
 
     always @(posedge clk) begin
-        if (dut.lost_q[0] || dut.stall_st0) waits0 = waits0 + 1;
-        if (dut.lost_q[1] || dut.stall_st1) waits1 = waits1 + 1;
+        if (dut.lose0) waits0 = waits0 + 1;
+        if (dut.lose1) waits1 = waits1 + 1;
     end
 
 endmodule

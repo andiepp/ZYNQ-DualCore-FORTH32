@@ -7,8 +7,7 @@
 module hf32_node (
     input  wire        clk,
     input  wire        rst,            // the core's reset (system reset or the ARM's hold)
-    input  wire        stall,          // pause, the re-read after it, a lost I/O read
-    input  wire        stall_st,       // a held I/O store (arbiter)
+    input  wire        stall,          // pause, the re-read after it, waiting for the I/O bus
 
     // the ARM's side: image loader while held, RAM reads while paused
     input  wire        ld_hold,        // held in reset: port B writes the loader's data
@@ -32,7 +31,6 @@ module hf32_node (
     output wire        mem_byte,
     output wire [31:0] mem_wdata,
     output wire        mem_rd,
-    output wire        st_req,
     output wire [31:0] cpu_t,
     output wire [14:0] cpu_pc,
     input  wire [31:0] io_rdata        // registered read data of the shared I/O
@@ -42,10 +40,10 @@ module hf32_node (
     wire [31:0] insn, mem_rdata;
 
     hf32_cpu #(.AW(15)) cpu (
-        .clk(clk), .rst(rst), .stall(stall), .stall_st(stall_st),
+        .clk(clk), .rst(rst), .stall(stall),
         .code_addr(code_addr), .insn(insn),
         .mem_addr(mem_addr), .mem_we(mem_we), .mem_byte(mem_byte),
-        .mem_wdata(mem_wdata), .mem_rdata(mem_rdata), .mem_rd(mem_rd), .st_req(st_req),
+        .mem_wdata(mem_wdata), .mem_rdata(mem_rdata), .mem_rd(mem_rd),
         .t_out(cpu_t), .pc_out(cpu_pc)
     );
 

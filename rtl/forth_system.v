@@ -3,12 +3,13 @@
 // character bridge, RAM reads while paused, board state for the app's lab panel). Register
 // and I/O maps: docs/design.md.
 //
-// The cores share one I/O bus. A core uses it whenever its data address (the next T, or T
-// for a store) is in the I/O space. When both do in the same clock, one goes first: the
-// other's store is held, and its read is repeated in the next clock (the read data of
-// that clock came from the other core's address). The core that waited goes first the
-// next time, so neither waits more than a few clocks. Core 1 stays in reset until the ARM
-// releases it, so a single-core ARM program sees the single-core system.
+// The cores share one I/O bus with a register stage. A core makes a request whenever its
+// data address (the next T, or T for a store) is in the I/O space; the request is
+// registered, and the next clock serves it, or the other core's (they take turns when
+// both wait). A core waits while its request is not served, and one clock after a read,
+// since the data comes a clock later than from its RAM: an I/O access costs a clock more
+// than a RAM access. Core 1 stays in reset until the ARM releases it, so a single-core ARM
+// program sees the single-core system.
 //
 // On the bus, for the cores to work together: a mailbox in each direction ($100050 data,
 // $100054 status, as seen by the core using them), 8 locks ($100060..) and a 4 KB shared
@@ -93,7 +94,7 @@ module forth_system #(
     // The two cores
     // ------------------------------------------------------------------
     wire [31:0] a0, a1, wd0, wd1, t0, t1, ram_doutb0, ram_doutb1;
-    wire        we0, we1, by0, by1, rd0, rd1, sr0, sr1;
+    wire        we0, we1, by0, by1, rd0, rd1;
     wire [14:0] pc0, pc1;
     wire [7:0]  rx_dout0, rx_dout1, tx_dout0, tx_dout1;
     wire [1:0]  rx_empty, rx_full, tx_empty, tx_full;
@@ -101,61 +102,78 @@ module forth_system #(
     reg  [7:0]  rx_din  = 8'd0;
     reg  [31:0] io_rdata = 32'd0;
 
-    // I/O arbiter: pr1 = core 1 goes first; lost_q = this core's read lost the bus
-    reg         pr1    = 1'b0;
-    reg  [1:0]  lost_q = 2'b00;
-    wire        io0 = a0[20] && !cpu_rst[0] && !cpu_pause[0];
-    wire        io1 = a1[20] && !cpu_rst[1] && !cpu_pause[1];
-    wire        stall_st0 =  pr1 && sr0 && t0[20] && io1;
-    wire        stall_st1 = !pr1 && sr1 && t1[20] && io0;
-    wire        owner = pr1 ? io1 : !io0;           // the core on the I/O bus this clock
-    wire [1:0]  stall = cpu_pause | pause_q | lost_q;
+    // ------------------------------------------------------------------
+    // I/O bus requests, one register per core: valid (the address is I/O), address,
+    // store, data. A served read sets done: the core's next request is the same read,
+    // repeated while it waited for the data, and is not served again.
+    // ------------------------------------------------------------------
+    reg         rv0 = 1'b0, rv1 = 1'b0, rwe0 = 1'b0, rwe1 = 1'b0, rby0 = 1'b0, rby1 = 1'b0;
+    reg  [31:0] ra0 = 32'd0, ra1 = 32'd0, rwd0 = 32'd0, rwd1 = 32'd0;
+    reg         dn0 = 1'b0, dn1 = 1'b0;
+    reg         pr1 = 1'b0;                          // both wait: core 1 is served first
+
+    wire        v0 = rv0 && !dn0;                    // a request to serve
+    wire        v1 = rv1 && !dn1;
+    wire        owner = (v0 && v1) ? pr1 : v1;       // the core served this clock
+    wire        g0 = v0 && !owner, g1 = v1 && owner;
+    wire        lose0 = v0 && !g0, lose1 = v1 && !g1;
+    // a core waits while its request is not served, and in the clock after a read is
+    wire        io_wait0 = v0 && (lose0 || !rwe0);
+    wire        io_wait1 = v1 && (lose1 || !rwe1);
+    wire [1:0]  stall = cpu_pause | pause_q | {io_wait1, io_wait0};
 
     always @(posedge clk)
         if (rst) begin
-            pr1    <= 1'b0;
-            lost_q <= 2'b00;
+            rv0 <= 1'b0; rv1 <= 1'b0; dn0 <= 1'b0; dn1 <= 1'b0; pr1 <= 1'b0;
         end else begin
-            lost_q <= {!pr1 && io0 && io1, pr1 && io0 && io1};
-            // the one that waited goes first next time, unless the first one is still
-            // repeating its own read
-            if (io0 && io1 && !(pr1 ? lost_q[1] : lost_q[0]))
-                pr1 <= !pr1;
+            // a request not served stays; otherwise the core's new one is taken
+            if (!lose0) begin
+                rv0 <= a0[20] && !cpu_rst[0] && !cpu_pause[0];
+                ra0 <= a0; rwe0 <= we0; rwd0 <= wd0; rby0 <= by0;
+            end
+            if (!lose1) begin
+                rv1 <= a1[20] && !cpu_rst[1] && !cpu_pause[1];
+                ra1 <= a1; rwe1 <= we1; rwd1 <= wd1; rby1 <= by1;
+            end
+            dn0 <= g0 && !rwe0;
+            dn1 <= g1 && !rwe1;
+            if (v0 && v1)
+                pr1 <= !pr1;                         // the one that waited goes first next
         end
 
     hf32_node n0 (
-        .clk(clk), .rst(cpu_rst[0]), .stall(stall[0]), .stall_st(stall_st0),
+        .clk(clk), .rst(cpu_rst[0]), .stall(stall[0]),
         .ld_hold(cpu_hold[0]), .ld_port(ld_port[0]), .ld_addr(ld_addr0), .ld_data(ld_data),
         .ld_we(ld_we[0]), .ram_doutb(ram_doutb0),
         .rx_push(rx_push[0]), .rx_din(rx_din), .tx_pop(tx_pop[0]),
         .rx_dout(rx_dout0), .tx_dout(tx_dout0),
         .rx_empty(rx_empty[0]), .rx_full(rx_full[0]), .tx_empty(tx_empty[0]), .tx_full(tx_full[0]),
         .mem_addr(a0), .mem_we(we0), .mem_byte(by0), .mem_wdata(wd0), .mem_rd(rd0),
-        .st_req(sr0), .cpu_t(t0), .cpu_pc(pc0), .io_rdata(io_bus_rdata)
+        .cpu_t(t0), .cpu_pc(pc0), .io_rdata(io_bus_rdata)
     );
 
     hf32_node n1 (
-        .clk(clk), .rst(cpu_rst[1]), .stall(stall[1]), .stall_st(stall_st1),
+        .clk(clk), .rst(cpu_rst[1]), .stall(stall[1]),
         .ld_hold(cpu_hold[1]), .ld_port(ld_port[1]), .ld_addr(ld_addr1), .ld_data(ld_data),
         .ld_we(ld_we[1]), .ram_doutb(ram_doutb1),
         .rx_push(rx_push[1]), .rx_din(rx_din), .tx_pop(tx_pop[1]),
         .rx_dout(rx_dout1), .tx_dout(tx_dout1),
         .rx_empty(rx_empty[1]), .rx_full(rx_full[1]), .tx_empty(tx_empty[1]), .tx_full(tx_full[1]),
         .mem_addr(a1), .mem_we(we1), .mem_byte(by1), .mem_wdata(wd1), .mem_rd(rd1),
-        .st_req(sr1), .cpu_t(t1), .cpu_pc(pc1), .io_rdata(io_bus_rdata)
+        .cpu_t(t1), .cpu_pc(pc1), .io_rdata(io_bus_rdata)
     );
 
-    // the I/O bus: the owner's address and store
-    wire [31:0] mem_addr  = owner ? a1 : a0;
-    wire        mem_we    = owner ? we1 : we0;
-    wire        mem_byte  = owner ? by1 : by0;
-    wire [31:0] mem_wdata = owner ? wd1 : wd0;
+    // the I/O bus: the served request (with none, a store of neither)
+    wire [31:0] mem_addr  = owner ? ra1 : ra0;
+    wire        mem_we    = owner ? g1 && rwe1 : g0 && rwe0;
+    wire        mem_byte  = owner ? rby1 : rby0;
+    wire [31:0] mem_wdata = owner ? rwd1 : rwd0;
     wire        io_addr   = mem_addr[20];
     wire        shm_addr  = io_addr && mem_addr[12];    // the shared RAM window
 
     // ------------------------------------------------------------------
     // Shared RAM: 1K x 32 (one block RAM) at $101000..$101FFF, words and bytes, read
-    // like the cores' own RAM (data one clock after the address)
+    // like the I/O registers (data one clock after the request is served)
     // ------------------------------------------------------------------
     reg  [31:0] shm [0:1023];
     reg  [31:0] shm_dout = 32'd0;

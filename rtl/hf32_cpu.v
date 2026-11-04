@@ -12,10 +12,6 @@
 // the code port re-reads the current instruction and the data port re-reads [T], so the
 // RAM outputs are valid again one cycle after the data port was lent to someone else.
 // A wait for the multi-cycle unit freezes the CPU the same way.
-//
-// stall_st is the I/O arbiter's hold for a store (forth_system: both cores want the shared
-// I/O in the same clock). It is only raised while st_req is high, and it does not change
-// mem_addr (a store drives T either way), so it never loops back into the arbiter.
 
 `default_nettype none
 
@@ -25,7 +21,6 @@ module hf32_cpu #(
     input  wire          clk,
     input  wire          rst,
     input  wire          stall,
-    input  wire          stall_st,     // hold this store (I/O arbiter), only while st_req
 
     output wire [AW-1:0] code_addr,
     input  wire [31:0]   insn,
@@ -36,7 +31,6 @@ module hf32_cpu #(
     output wire [31:0]   mem_wdata,
     input  wire [31:0]   mem_rdata,
     output wire          mem_rd,       // this instruction consumes [T] (for I/O pop side effects)
-    output wire          st_req,       // this instruction stores (whether or not it is held)
 
     output wire [31:0]   t_out,        // T, the address of the current load/store
     output wire [AW-1:0] pc_out
@@ -52,6 +46,15 @@ module hf32_cpu #(
     reg  [31:0]   dstack [0:31];
     reg  [31:0]   rstack [0:31];
     reg  [31:0]   fstack [0:31];
+
+    // The stacks start at 0, as in the simulator (tools/hf32.py): an underflow then reads 0
+    // in simulation too, instead of an unknown value that would freeze the testbench (an
+    // unknown T makes the system's I/O request, and so the stall, unknown)
+    integer si;
+    initial
+        for (si = 0; si < 32; si = si + 1) begin
+            dstack[si] = 32'd0; rstack[si] = 32'd0; fstack[si] = 32'd0;
+        end
 
     wire [31:0]   st1  = dstack[dsp];  // N
     wire [31:0]   st2  = dstack[dsp - 5'd1];   // NN, the low dividend cell of op 33
@@ -109,15 +112,13 @@ module hf32_cpu #(
     wire        u_busy, u_valid;
     wire [31:0] u_result, u_rem;
     wire        u_wait = u_need && !u_valid;
-    wire        stall_all = stall | stall_st;
-    wire        hold_x = stall | u_wait;           // every hold but the store arbiter's
-    wire        hold   = hold_x | stall_st;
+    wire        hold   = stall | u_wait;
 
     hf32_mcu mcu (
         .clk(clk), .rst(rst),
-        .start(u_need && !u_valid && !u_busy && !stall_all && !rst),
+        .start(u_need && !u_valid && !u_busy && !stall && !rst),
         .op(u_op), .a(u_a), .b(u_b), .c(st0),
-        .consume(u_need && u_valid && !stall_all && !rst),
+        .consume(u_need && u_valid && !stall && !rst),
         .busy(u_busy), .valid(u_valid), .result(u_result), .div_rem(u_rem)
     );
 
@@ -294,12 +295,10 @@ module hf32_cpu #(
     // Memory ports
     // ------------------------------------------------------------------
     assign code_addr = hold ? pc : pc_n;
-    assign st_req    = !rst && is_alu && (n2m | f2m);
-    assign mem_we    = st_req && !hold;
+    assign mem_we    = !rst && !hold && is_alu && (n2m | f2m);
     assign mem_byte  = byte_s && !f2m;
     assign mem_wdata = f2m ? ft : st1;
-    // (st_req || hold) as before, written without stall_st, which only comes with st_req
-    assign mem_addr  = (st_req || hold_x) ? st0 : st0_n;
+    assign mem_addr  = (mem_we || hold) ? st0 : st0_n;
     assign mem_rd    = !rst && !hold && is_alu && (op == 6'd13 || op == 6'd14 || fop == 5'd3);
     assign t_out     = st0;
     assign pc_out    = pc;

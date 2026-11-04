@@ -84,8 +84,15 @@ Three parts, each checked before the next:
    every input (apart from `here` and `words`), single-core `shield`/`pwm` RTL = ISS. The
    ISS now shares the board I/O between its two cores, and its XADC codes are truncated
    like the Xilinx model's (`shield` had differed by 1 mV). Built: 13,351 LUTs; timing met,
-   but only 0.136 ns at 50 MHz: the I/O bus needs a register stage next. A core's restart
-   while the other runs is not simulated yet (it needs the ARM's restart, step 4).
+   but only 0.136 ns at 50 MHz. A core's restart while the other runs is not simulated yet
+   (it needs the ARM's restart, step 4).
+4. **A register stage on the I/O bus** (2026-11-04, design.md 5.2): each core's request is
+   registered and served in the next clock; a core waits while its request is not served
+   and in the clock after a read. All stalls come from registers, so the store hold of
+   part 1 is gone and the CPU is back to its step-2 form (plus stacks that start at 0, as
+   in the simulator: an underflow had read unknown values and frozen the testbench).
+   50 MHz slack 3.974 ns (from 0.136), 200 MHz 0.465 ns; the three two-core tests and
+   single-core `smoke`/`shield` RTL = ISS. An I/O access costs one clock more.
 
 ## Step 3 onwards: notes
 

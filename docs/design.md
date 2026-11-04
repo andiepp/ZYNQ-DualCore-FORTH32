@@ -139,14 +139,15 @@ to 3, `build/hw/utilization.rpt`). The single core with the divider (step 2) use
 4,409 flip-flops, 41 block RAMs and 15 DSPs; the second core with its RAM, FIFOs and the I/O
 arbiter added 4,164 LUTs, 688 flip-flops, 32 block RAMs and 6 DSPs; the mailboxes, locks and
 shared RAM another 252 LUTs, 41 flip-flops and 1 block RAM; the pin and peripheral owners
-with the GPIO set/clear registers 614 LUTs and 131 flip-flops:
+with the GPIO set/clear registers 614 LUTs and 131 flip-flops; the I/O bus's register stage
+118 flip-flops (and 10 LUTs fewer):
 
 | Resource | Used | Available | % | Mostly in |
 |---|---|---|---|---|
-| Slice LUTs | 13,351 | 53,200 | 25.1 | two CPU datapaths with FPU and divider, peripherals, pin router, owner tables |
+| Slice LUTs | 13,341 | 53,200 | 25.1 | two CPU datapaths with FPU and divider, peripherals, pin router, owner tables |
 | of which LUT RAM | 426 | 17,400 | 2.4 | each core's three 32-entry stacks, the FIFOs and mailboxes |
-| Flip-flops | 5,269 | 106,400 | 5.0 | |
-| Slices | 4,170 | 13,300 | 31.4 | |
+| Flip-flops | 5,387 | 106,400 | 5.1 | |
+| Slices | 4,327 | 13,300 | 32.5 | |
 | Block RAM (36 Kb) | 74 | 140 | 52.9 | 2 × 32 for the two 128 KB Forth RAMs, 9 for the pattern memory, 1 for the shared RAM |
 | DSP48 | 21 | 220 | 9.5 | per core the 32 × 32 multiplier and the FPU significand multiplier; PWM duty products, tone volume |
 | Bonded I/O pins | 94 | 125 | 75.2 | LEDs 10, buttons/switches 6, shield 42, analog 18, Pmods 16, audio 2 |
@@ -160,15 +161,16 @@ about 40,000 LUTs are still free.
 
 | Clock | Worst setup slack | Worst hold slack | Critical path |
 |---|---|---|---|
-| FCLK0, 50 MHz (20 ns) | 0.136 ns | 0.033 ns | core 1's float stack pointer → next T → I/O bus → pattern generator memory enable |
-| FCLK1, 200 MHz (5 ns) | 0.325 ns | 0.113 ns | pattern generator: fetch register → pattern memory address |
+| FCLK0, 50 MHz (20 ns) | 3.974 ns | 0.035 ns | core 0: its RAM's data output → T → its RAM's write enable |
+| FCLK1, 200 MHz (5 ns) | 0.465 ns | 0.077 ns | pattern generator: fetch register → pattern memory address |
 
-All constraints are met (two cores with mailboxes, locks, shared RAM and owners), but the
-50 MHz margin is nearly gone: 3.2 ns with one core, 0.9 ns with the second, 0.8 ns with
-part 2, 0.14 ns with the owner tables. The worst path runs from a core's next T through the
-arbiter's choice of the bus owner into the shared I/O decode, the cost of sharing one I/O
-bus combinationally. A register stage on the bus (one more clock for an I/O access) is the
-remedy, and is planned before more logic goes onto the bus. The 200 MHz
+All constraints are met. With the I/O bus shared combinationally, the 50 MHz margin had
+shrunk from 3.2 ns (one core) to 0.14 ns (two cores with mailboxes, locks, shared RAM and
+owners): the worst path ran from a core's next T through the arbiter into the shared I/O
+decode. The bus's register stage (section 5.2) cut that path at the request registers, for
+one more clock per I/O access; the worst path is now inside a core again, as with one
+core. The 200 MHz pattern generator has never had much margin (0.000 ns in 3.1) and
+depends on the placement around it. The 200 MHz
 pattern generator has never had much margin (0.000 ns in 3.1, 0.464 ns in step 2) and
 depends on the placement around it.
 
@@ -366,7 +368,9 @@ The CPU has one freeze mechanism, `hold`, for two causes:
 
 - **The multi-cycle unit is busy** (`u_wait`): the current instruction needs the multiplier or
   the FPU and the result is not valid yet.
-- **The ARM pauses the CPU** (`stall` from `forth_system`): CTRL bit 1 and one cycle after it.
+- **The ARM pauses the CPU** or **the I/O bus is not ready** (`stall` from `forth_system`):
+  CTRL bit 1 and one cycle after it, and `io_wait` while an I/O request waits and in the
+  clock after an I/O read is served (section 5.2).
 
 While held, no register changes, no stack is written, no store happens and no FIFO is
 popped. The code port re-reads the current instruction (`code_addr` = PC) and the data port
@@ -570,24 +574,27 @@ I/O register *k* sits at `$100000 + 4k`; address bits 9..2 select one of 256 reg
 map repeats every 1 KB. Registers 0..127 are the board I/O of the 16-bit design; registers
 128 and up (`$100200`…) are the 3.1 peripherals.
 
-An I/O read must look like a RAM read to the CPU: the data must be valid one clock after the
-address. The decoder therefore registers its result (`io_rdata`), selecting by the address of
-the same clock, and remembers whether that address was I/O (`io_sel`); the data port's read
-data is `io_sel ? io_rdata : ram_doutb`. Writes go to the addressed block in the store cycle
-itself. Unused registers read 0 and ignore writes.
+**The I/O bus and its register stage.** Both cores reach the I/O through one bus, and it is
+one clock behind the cores. A core makes a request whenever its data address (the next T,
+or T in a store) is in the I/O space: address, store flag and data go into its request
+register (`rv`, `ra`, `rwe`, `rwd`). In the next clock the bus serves one request (the
+arbiter's `owner`): the decoder works from that register, a store lands in the addressed
+block, and a read's result is registered (`io_rdata`) and reaches the core one clock later.
+The data port's read data is `io_sel ? io_rdata : ram_doutb`, where `io_sel` remembers that
+the core's address was I/O. Unused registers read 0 and ignore writes.
 
-**Two cores, one I/O bus.** Both cores reach the I/O through one bus: in each clock it
-carries the address of the core whose data address (the next T, or T in a store) is in the
-I/O space. When both are, one goes first (the arbiter's `pr1`):
+So an I/O read cannot come one clock after its address, as a RAM read does. The core is
+stalled (`io_wait`, section 3.6) while its request waits to be served, and in the clock
+after a read is served, in which it repeats the same request; the served read sets `dn`,
+so that repetition is not served again. A store does not wait unless the other core's
+request is served first. Every I/O access therefore costs one clock more than a RAM
+access, also the reads the CPU makes ahead of an instruction that then does not use them.
+When both cores wait, they take turns (`pr1` passes to the one that waited), so neither
+waits more than one extra clock for the other. All stalls come from registers, so the
+CPU's hold never loops back into the bus, and the decode has the whole clock: the cores'
+next-T logic ends at the request registers.
 
-- the other core's **store** is held in that clock (`stall_st`, raised only while the CPU
-  wants to store, so it cannot loop back into the decision);
-- the other core's **read** came from the wrong address, so that core is stalled in the
-  next clock while it reads again (`lost_q`, the same re-read as after a pause, section 3.6).
-
-The core that waited goes first next time, unless the first one is still repeating its own
-read; so neither waits more than a few clocks, and only when both use the I/O in the same
-clock. Registers `$100000` and `$100004` (the terminal), `$10001C` (the core number) and
+Registers `$100000` and `$100004` (the terminal), `$10001C` (the core number) and
 the mailbox and lock registers answer for the core on the bus; all other registers are
 shared. A read that removes what it reads (a terminal, mailbox or UART byte) happens when
 the instruction consumes the value, and belongs to that instruction's core.

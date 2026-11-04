@@ -77,6 +77,9 @@ public sealed class SimulatedBoard : IByteTransport
 
     internal SimCore Other(SimCore core) => cores[1 - core.Index];
 
+    /// <summary>The eight locks: the core holding each one, or null.</summary>
+    internal int?[] Locks { get; } = new int?[8];
+
     /// <summary>Forth output of one core: core 0's always goes out, core 1's only while multiplexing.</summary>
     internal void Output(SimCore core, string text)
     {
@@ -351,7 +354,7 @@ internal sealed class SimCore
         "+", "-", "*", "/", "mod", "negate", "abs", "max", "min", "=", "<", ">", "0=", "and", "or", "xor", "invert",
         "dup", "drop", "swap", "over", "rot", "nip", "depth", ".", "u.", ".s", "emit", "cr", "space", "words",
         "f+", "f-", "f*", "f/", "fsqrt", "fdup", "fdrop", "fswap", "f.", "f.s", "s>f", "f>s", "fdepth",
-        "led!", "led@", "core#", "send", "receive", "mail?",
+        "led!", "led@", "core#", "send", "receive", "mail?", "try-lock", "lock", "unlock",
     ];
 
     private readonly SimulatedBoard board;
@@ -735,24 +738,57 @@ internal sealed class SimCore
             case "led!": board.Leds = Pop() & 0xF; break;
             case "led@": Push(board.Leds); break;
             case "core#": Push(Index); break;
+            // as in the kernel: send ( x -- ) to the other core, receive ( -- x ), mail? ( -- f );
+            // the simulator cannot wait, so a full or empty mailbox and a held lock abort instead
             case "send":
-                b = Pop();
                 a = Pop();
-                if (b is < 0 or > 1)
+                SimCore other = board.Other(this);
+                if (other.Mailbox.Count >= 32)
                 {
-                    throw new SimAbort("no such core");
+                    throw new SimAbort("mailbox full");
                 }
 
-                (b == Index ? this : board.Other(this)).Mailbox.Enqueue(a);
+                other.Mailbox.Enqueue(a);
                 break;
             case "receive":
                 Push(Mailbox.Count == 0 ? throw new SimAbort("mailbox empty") : Mailbox.Dequeue());
                 break;
-            case "mail?": Push(Mailbox.Count); break;
+            case "mail?": Push(Mailbox.Count > 0 ? -1 : 0); break;
+            case "try-lock": Push(TakeLock(Pop()) ? -1 : 0); break;
+            case "lock":
+                if (!TakeLock(Pop()))
+                {
+                    throw new SimAbort("lock held by the other core");
+                }
+
+                break;
+            case "unlock":
+                a = LockIndex(Pop());
+                if (board.Locks[a] == Index)
+                {
+                    board.Locks[a] = null;
+                }
+
+                break;
             default:
                 return false;
         }
 
+        return true;
+    }
+
+    private int LockIndex(int n) => n is >= 0 and < 8 ? n : throw new SimAbort("bad lock");
+
+    /// <summary>Takes lock n if it is free or already this core's.</summary>
+    private bool TakeLock(int n)
+    {
+        n = LockIndex(n);
+        if (board.Locks[n] is int holder && holder != Index)
+        {
+            return false;
+        }
+
+        board.Locks[n] = Index;
         return true;
     }
 

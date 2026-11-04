@@ -11,6 +11,11 @@ It is the 32-bit generation of ZYNQ-FORTH (16-bit, HF16). The board I/O, the app
 names and stack effects of the words are the same, so sources written for ZYNQ-FORTH run
 here; cells, addresses and the CPU are new, and so is floating point (section 5.15).
 
+**Two cores.** ZYNQ-DualCore-FORTH32 4.0 has two HF32 cores, each running a Forth of its own:
+own memory, dictionary, stacks, terminal and saved source. They share the board's I/O and
+talk through a mailbox, locks and a shared memory. The app shows one core at a time
+(section 2.11); the words for working together are in section 5.25, examples in 6.5.
+
 Besides the board's LEDs, buttons and switches, Forth reaches the Arduino-compatible
 **shield connector**: 36 digital pins with four PWM channels, and 9 analog inputs, read by
 the FPGA's built-in XADC converter. On the Pmod headers JA and JB, a **pattern generator**
@@ -408,6 +413,23 @@ hello
    saved source and `lights ready`. From now on, `lights` is there every time the board is
    switched on.
 7. To remove it, untick **Autostart** (the source stays in flash) or click **Erase**.
+
+### 2.11 Two cores
+
+The board runs two Forths, **core 0** and **core 1**. The switch **Core 0 / Core 1** next to
+the connection (Ctrl+1 and Ctrl+2) chooses the core the app shows:
+
+- **Per core:** the terminal and its input line, the source editor and its file, the data
+  and float stacks, the dictionary and the saved source. What you type goes to the shown
+  core; the other one keeps running and its output keeps arriving in its own terminal. A
+  dot on a core's switch (`Core 0 •`) means it printed something while the other core was
+  shown.
+- **Shared:** the board view and the pattern editor, since there is only one board.
+- **Restart** and **Restart clean** restart the shown core only. Its peripherals and pins
+  are reset and released (section 5.25); the other core keeps running.
+- The status line at the bottom shows both cores' state and how often each was started.
+
+A terminal program on the serial port sees core 0 only, as with the single-core firmware.
 
 ---
 
@@ -1821,6 +1843,47 @@ These words are visible in `words` and can be used, but they mainly exist for th
 | `(ack?)` | `( f -- )` | ` no ack` (after a stop) if f is false. |
 | `dds-sync` | `( -- )` | Wait until the DDS took over the last change (it runs on its own clock). |
 
+### 5.25 Two cores
+
+Both cores run the same kernel; `core#` tells a program which one it is on. Each has its own
+128 KB of memory, which the other cannot reach. For working together there are:
+
+- **Mailboxes:** a queue of 32 cells in each direction. `send` puts a cell into the other
+  core's mailbox (waiting while it is full), `receive` takes the oldest cell sent to this
+  core (waiting until there is one).
+- **Locks:** eight, numbered 0..7. A lock is held by at most one core: `lock` waits until it
+  gets it, `try-lock` tries once, `unlock` lets it go. Only the core holding a lock can
+  release it; taking a lock this core already holds succeeds again (it is not counted).
+- **Shared memory:** 4 KB at `shared`, the only memory both cores reach, for cells and bytes
+  (`@ ! c@ c!` and the rest). What it holds is up to the programs; guard data that both
+  cores change with a lock.
+
+| Word | Stack | Description |
+|---|---|---|
+| `core#` | `( -- n )` | The number of this core: 0 or 1 (0 on the single-core firmware). |
+| `send` | `( x -- )` | Send x to the other core; waits while its mailbox is full. |
+| `receive` | `( -- x )` | The oldest cell the other core sent; waits until there is one. |
+| `mail?` | `( -- f )` | True if a cell is waiting for this core. |
+| `lock` | `( n -- )` | Take lock n (0..7), waiting while the other core holds it. ` bad lock` for other numbers. |
+| `try-lock` | `( n -- f )` | Take lock n if it is free or already this core's: true; false if the other core holds it. |
+| `unlock` | `( n -- )` | Release lock n, if this core holds it. |
+| `shared` | `( -- a )` | Address of the shared memory (`$101000`). |
+| `/shared` | `( -- n )` | Its size in bytes: 4096. |
+| `(lock)` | `( n -- a )` | The register of lock n: reads 0 free, 1 this core's, 2 the other's. |
+
+**Who owns what.** Pins and peripherals belong to the core that opened them (section 5.16,
+*Pin owners* and *Peripheral owners*): the other core's open and close words, and its
+`output input high low toggle` on those pins, refuse with ` in use by the other core` or
+` pin taken`. The LEDs, the RGB LEDs and the pattern generator's registers have no owner:
+`led!` writes all four LEDs at once, so when both cores use them, let one core drive them
+or take a lock around it.
+
+**Restarting one core** (the app's Restart, `restart n`, Ctrl-R on its terminal) reloads that
+core's kernel and runs its saved source; its mailbox is emptied, its locks are released,
+and the peripherals it opened are reset and released, its pins become inputs. The other core
+keeps running and keeps what it holds. Cells it had sent and the restarted core had not yet
+received are lost; what is in the shared memory stays.
+
 ## 6. Examples
 
 Each example can be typed at the terminal line by line. The ones that loop until a key is
@@ -2011,6 +2074,37 @@ voltmeter
 The loop takes well under a millisecond, while the XADC refreshes its results about every
 millisecond (section 5.12), so most of the 100 readings are the same. For an average over
 100 ms, add `1 ms` inside the loop.
+
+### 6.5 Two cores
+
+**A worker on core 1.** Core 1 squares every cell it receives and sends the result back. Type
+the first two lines with **Core 1** shown, the others on **Core 0**:
+```forth
+: worker begin receive dup * send again ;     \ core 1
+worker                                        \ core 1: runs until Restart
+: ask ( n -- n*n ) send receive ;             \ core 0
+7 ask .  12 ask .                             \ core 0: prints 49 144
+```
+`worker` never returns, so core 1's terminal shows no ` ok`; **Restart** on core 1 stops it.
+
+**A counter both cores increment.** Without the lock, both cores can read the same value
+and one increment is lost. Whether that happens depends on how the two loops happen to line
+up (on the board, a run without the lock may well count to 2000 anyway), which is why data
+both cores change needs the lock:
+```forth
+: bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;   \ on both cores
+0 shared !                                                      \ core 0, before
+bump                                                            \ on both, at once
+shared @ .                                                      \ after both: 2000
+```
+To start both at the same moment, let core 0 send a cell first and core 1 begin with
+`receive drop bump`.
+
+**Who is running?** `core#` on each core:
+```forth
+: hello ." core " core# . ." here" cr ;
+hello
+```
 
 ---
 

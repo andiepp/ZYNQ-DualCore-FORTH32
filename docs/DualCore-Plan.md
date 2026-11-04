@@ -24,7 +24,7 @@ divider** and a **second HF32 core**. The version line is 4.x.
 | 2 | Hardware divider in the multi-cycle unit (single core first), ISS and kernel | done 2026-11-04 (board test with step 6) |
 | 3 | Second HF32 + its own unit and RAM in `forth_system`; per-core I/O decode, mailboxes, shared RAM window, pin ownership per core | |
 | 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | done 2026-11-04 (on the board over JTAG; not flashed) |
-| 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | |
+| 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | done 2026-11-04 (on the board over JTAG) |
 | 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | |
 | later | HASE: the node shows core 0 as today; core 1 in the HASE panel needs its own HASE-Lab ADR | |
 
@@ -112,7 +112,21 @@ cores with their own terminal, stacks and dictionary (and its buttons are enable
 connecting now; they had waited for the first mouse or key input). Core 1's saved source
 (flash sector 0xFD0000): `store … on 1`, read back, fed on `restart 1` (its words ran on core
 1), skipped on `restart skip 1`, core 0's sector untouched, erased again. Not checked yet: the
-HASE node with firmware 4.0, the peripherals from both cores at once on the board.
+HASE node with firmware 4.0 (the peripherals from both cores at once: done in step 5).
+
+## Step 5: kernel words for two cores (done)
+
+`forth/kernel.fs`: `core#`, `send`, `receive`, `mail?`, `lock`, `try-lock`, `unlock`,
+`(lock)`, `shared`, `/shared` (430 words, 24,876 bytes). The two-core test inputs use them
+(`sim/mail0/1.txt`, `sim/own0/1.txt`); the ISS gives the same output as before on every
+input (apart from `here` and `words`), the RTL = ISS on the mailbox test. The app's simulated
+board has the same words (it aborts where the kernel would wait). Manual: 2.11 (two cores in
+the app), 5.25 (the words, ownership, restarting one core), 6.5 (examples); `Manual.pdf`
+regenerated. On the board: the 6.5 examples (a worker on core 1, the locked counter: 2000),
+PWM on core 0 and DDS on core 1 at once (100 and 994 rising edges in 100 ms), core 1 refused
+core 0's PWM channel, a restart of core 0 left core 1's DDS running and released core 0's
+PWM, a restart of core 1 stopped and released its DDS. The counter without the lock also
+counted to 2000 on the board (the race window is a few clocks); the manual says it may.
 
 ## Step 3 onwards: notes
 

@@ -1,6 +1,3 @@
-$100050 constant mail  $100054 constant mail?
-: send ( x -- ) begin mail? @ 2 and until mail ! ;
-: receive ( -- x ) begin mail? @ 1 and until mail @ ;
 receive .  3 owner . 5 owner . 26 owner . 1 unit @ . 5 unit @ .
 3 high
 115200 28 29 0 uart-open

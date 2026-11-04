@@ -1,11 +1,7 @@
-$100050 constant mail  $100054 constant mail?  $101000 constant shm
-: send ( x -- ) begin mail? @ 2 and until mail ! ;
-: receive ( -- x ) begin mail? @ 1 and until mail @ ;
-: lk ( n -- a ) cells $100060 + ;
-: lock ( n -- ) lk begin 1 over ! dup @ 1 = until drop ;
-: unlock ( n -- ) lk 0 swap ! ;
+core# .
 : sum 0 100 0 do receive + loop ;  sum dup . send
-receive .  3 lk @ .  3 unlock 3 lk @ .  shm 5 + c@ .  8 send
-: bump 1000 0 do 0 lock shm @ 1+ shm ! 0 unlock loop ;
+receive .  3 (lock) @ .  3 unlock 3 (lock) @ .  shared 5 + c@ .  8 send
+: bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;
 receive drop bump 2 send
-mail? @ .
+receive . 5 try-lock . 5 (lock) @ . 9 send
+mail? .

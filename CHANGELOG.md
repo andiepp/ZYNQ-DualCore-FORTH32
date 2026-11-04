@@ -62,6 +62,10 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   JTAG with the app.
 - **App:** the buttons are enabled right after connecting (they waited for the first mouse or
   key input).
+- **Kernel words for two cores**: `core#`, `send`, `receive`, `mail?`, `lock`, `try-lock`,
+  `unlock`, `(lock)`, `shared`, `/shared`. The app's simulated board has the same ones
+  (`send` takes no core number any more, `mail?` gives a flag). Manual: sections 2.11, 5.25
+  and 6.5 on the two cores.
 
 ## ZYNQ-FPGA-FORTH32
 

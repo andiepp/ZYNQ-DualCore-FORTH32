@@ -201,12 +201,27 @@ public sealed class SimulatedBoardTests : IDisposable
     {
         await client.VersionAsync();
         await client.MultiplexAsync(true);
-        await client.SendLineAsync("42 1 send 43 1 send", 0);
+        await client.SendLineAsync("42 send 43 send mail? .", 0);
         await WaitForAsync(async () => (await client.StatusAsync(1)).Mailbox == 2);
 
-        await client.SendLineAsync("receive receive + .", 1);
-        await WaitForAsync(() => Text(1).Contains("85  ok", StringComparison.Ordinal));
+        await client.SendLineAsync("mail? . receive receive + .", 1);
+        await WaitForAsync(() => Text(1).Contains("-1 85  ok", StringComparison.Ordinal));
         Assert.Equal(0, (await client.StatusAsync(1)).Mailbox);
+        Assert.Contains("0  ok", Text(0), StringComparison.Ordinal);     // core 0's own mailbox is empty
+    }
+
+    [Fact]
+    public async Task LocksBelongToOneCore()
+    {
+        await client.VersionAsync();
+        await client.MultiplexAsync(true);
+        await client.SendLineAsync("3 try-lock .", 0);
+        await WaitForAsync(() => Text(0).Contains("-1  ok", StringComparison.Ordinal));
+        await client.SendLineAsync("3 try-lock . 3 unlock 3 try-lock .", 1);
+        await WaitForAsync(() => Text(1).Contains("0 0  ok", StringComparison.Ordinal));
+        await client.SendLineAsync("3 unlock", 0);
+        await client.SendLineAsync("3 try-lock .", 1);
+        await WaitForAsync(() => Text(1).Contains("-1  ok", StringComparison.Ordinal));
     }
 
     [Fact]

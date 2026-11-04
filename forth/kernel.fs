@@ -142,6 +142,22 @@ create tib 84 allot
 : ms ( n -- ) ms@ + begin dup ms@ - 0< until drop ;
 
 \ ---------------------------------------------------------------------------
+\ Two cores (docs/design.md 5.2): the core number, a 32-word mailbox in each
+\ direction, eight locks and 4 KB of shared RAM. A read of $100050 takes the
+\ word, so receive checks mail? first; taking a lock is a store and a check.
+\ ---------------------------------------------------------------------------
+
+: core# ( -- n ) $10001C @ ;
+: mail? ( -- f ) $100054 @ 1 and 0<> ;
+: send ( x -- ) begin $100054 @ 2 and until $100050 ! ;
+: receive ( -- x ) begin mail? until $100050 @ ;
+: (lock) ( n -- a ) dup 8 u< 0= if ."  bad lock" cr abort then cells $100060 + ;
+: try-lock ( n -- f ) (lock) 1 over ! @ 1 = ;
+: lock ( n -- ) begin dup try-lock until drop ;
+: unlock ( n -- ) (lock) 0 swap ! ;
+$101000 constant shared   4096 constant /shared
+
+\ ---------------------------------------------------------------------------
 \ Shield digital pins. Pin numbers are the shield labels: 0..13 = IO0..IO13,
 \ 14..19 = A0..A5 used as digital pins, 26..41 = IO26..IO41, 42..47 = the
 \ shield's SCL and SDA and the SPI header's MISO, MOSI, SCK and SS. Pin n is bit

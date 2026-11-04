@@ -88,16 +88,16 @@ module hf32_node (
     // Terminal FIFOs: the core reads RX at $100000 and writes TX there
     // ------------------------------------------------------------------
     wire rx_pop  = mem_rd && cpu_t == 32'h0010_0000;
-    wire tx_push = mem_we && io_addr && mem_addr[9:2] == 8'd0;
+    wire tx_push = mem_we && io_addr && !mem_addr[12] && mem_addr[9:2] == 8'd0;
 
     fifo #(.WIDTH(8), .DEPTH_LOG2(5)) rx_fifo (
         .clk(clk), .rst(rst), .push(rx_push), .din(rx_din),
-        .pop(rx_pop), .dout(rx_dout), .empty(rx_empty), .full(rx_full)
+        .pop(rx_pop), .dout(rx_dout), .empty(rx_empty), .full(rx_full), .count()
     );
 
     fifo #(.WIDTH(8), .DEPTH_LOG2(5)) tx_fifo (
         .clk(clk), .rst(rst), .push(tx_push), .din(mem_wdata[7:0]),
-        .pop(tx_pop), .dout(tx_dout), .empty(tx_empty), .full(tx_full)
+        .pop(tx_pop), .dout(tx_dout), .empty(tx_empty), .full(tx_full), .count()
     );
 
 endmodule

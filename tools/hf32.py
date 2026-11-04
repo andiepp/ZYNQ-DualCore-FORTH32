@@ -703,9 +703,23 @@ XADC_SIM = {0x00: 2585, 0x01: 1365, 0x02: 2458, 0x06: 1365, 0x0D: 1365, 0x0E: 24
             0x0F: 2048, 0x11: 2036, 0x19: 4071, 0x1C: 1024}
 
 
+MAIL = IO_BASE + 0x50          # mailbox data, $100054 its status, $100060.. the locks
+SHM_BIT = 0x1000               # I/O addresses with bit 12: the 4 KB shared RAM
+
+
+class Shared:
+    """What the two cores share beyond the board I/O: a mailbox per direction (32 words),
+    8 locks and the 4 KB shared RAM."""
+    def __init__(self):
+        self.mail = [[], []]                             # mail[k]: words sent to core k
+        self.locks = [None] * 8                          # the holding core, or None
+        self.shm = bytearray(4096)
+
+
 class Machine:
-    def __init__(self, mem, rx=b'', core=0):
+    def __init__(self, mem, rx=b'', core=0, shared=None):
         self.core = core                                 # I/O register 7, the core number
+        self.shared = shared or Shared()
         self.mem = bytearray(mem)
         self.pc = 0
         self.t = 0
@@ -762,6 +776,9 @@ class Machine:
         return ((out & drive) | (PIN_IDLE & ~drive)) & PIN_EXISTS
 
     def rd32(self, a):
+        if a & IO_BASE and a & SHM_BIT:
+            a &= 0xFFC
+            return int.from_bytes(self.shared.shm[a:a + 4], 'little')
         if a & IO_BASE:
             k = (a >> 2) & 0xFF
             return self.io_read(k) if k < 128 else self.io_read_hi(k - 128)
@@ -776,6 +793,15 @@ class Machine:
             return [period & 0xFFFF, period >> 16, duty, control][k & 3]
         if k >> 4 == 6:
             return 0                                     # pattern generator: idle
+        sh = self.shared
+        if k == 20:
+            box = sh.mail[self.core]
+            return box[0] if box else 0
+        if k == 21:
+            return (1 if sh.mail[self.core] else 0) | (2 if len(sh.mail[1 - self.core]) < 32 else 0)
+        if 24 <= k < 32:
+            holder = sh.locks[k - 24]
+            return 0 if holder is None else 1 if holder == self.core else 2
         port = ((k >> 2) & 7) - 2
         if k >> 5 == 0 and 0 <= port <= 2:
             shift, sel = 16 * port, k & 3
@@ -846,6 +872,14 @@ class Machine:
             self.tone_regs[k - 40] = v & M32
 
     def store(self, a, v, byte):
+        if a & IO_BASE and a & SHM_BIT:
+            a &= 0xFFF
+            if byte:
+                self.shared.shm[a] = v & 0xFF
+            else:
+                a &= 0xFFC
+                self.shared.shm[a:a + 4] = (v & M32).to_bytes(4, 'little')
+            return
         if a & IO_BASE:
             if (a >> 2) & 0x80:
                 return self.store_hi(((a >> 2) & 0xFF) - 128, v)
@@ -858,6 +892,20 @@ class Machine:
                     ch[1] = (v << 16) | ch[0]
                 else:
                     ch[sel] = v
+                return
+            sh = self.shared
+            if k == 20:
+                box = sh.mail[1 - self.core]
+                if len(box) < 32:
+                    box.append(v & M32)
+                return
+            if 24 <= k < 32:
+                n = k - 24
+                if v & 1:
+                    if sh.locks[n] is None:
+                        sh.locks[n] = self.core
+                elif sh.locks[n] == self.core:
+                    sh.locks[n] = None
                 return
             port = ((k >> 2) & 7) - 2
             if k >> 5 == 0 and 0 <= port <= 2:
@@ -882,6 +930,13 @@ class Machine:
         else:
             a &= RAM_BYTES - 4
             self.mem[a:a + 4] = (v & M32).to_bytes(4, 'little')
+
+    def consumed(self, t):
+        """An instruction used [t]: the reads that remove what they read."""
+        if t == IO_BASE and self.rx:
+            self.rx.pop(0)
+        elif t == MAIL and self.shared.mail[self.core]:
+            self.shared.mail[self.core].pop(0)
 
     def step(self):
         a = (self.pc << 2) & (RAM_BYTES - 4)
@@ -931,13 +986,11 @@ class Machine:
             elif op == 12: v = r
             elif op == 13:
                 v = self.rd32(t & ~3)
-                if t == IO_BASE and self.rx:
-                    self.rx.pop(0)
+                self.consumed(t)
             elif op == 14:
                 w = self.rd32(t & ~3)
                 v = (w >> (8 * (t & 3))) & 0xFF
-                if t == IO_BASE and self.rx:
-                    self.rx.pop(0)
+                self.consumed(t)
             elif op == 15: v = self.dsp
             elif op == 16: v = n - t
             elif op == 17: v = t + 1
@@ -964,8 +1017,7 @@ class Machine:
             elif fop == 2:  fv = t
             elif fop == 3:
                 fv = self.rd32(t & ~3)
-                if t == IO_BASE and self.rx:
-                    self.rx.pop(0)
+                self.consumed(t)
             elif fop == 4:  fv = f_add(fn, ft)
             elif fop == 5:  fv = f_add(fn, ft, sub=True)
             elif fop == 6:  fv = f_mul(fn, ft)
@@ -1001,8 +1053,21 @@ class Machine:
         has polled an empty RX FIFO idle_limit times (waiting at KEY)."""
         while self.steps < max_steps:
             self.step()
-            if not self.rx and self.idle_reads > idle_limit:
+            if self.done(idle_limit):
                 break
+
+    def done(self, idle_limit):
+        return not self.rx and self.idle_reads > idle_limit
+
+
+def run_two(m0, m1, max_steps, idle_limit=2000):
+    """Both cores, one instruction each in turn, until both wait at KEY with no input
+    left (or max_steps each)."""
+    while m0.steps < max_steps:
+        m0.step()
+        m1.step()
+        if m0.done(idle_limit) and m1.done(idle_limit):
+            break
 
 
 DELTAS = {0: 0, 1: 1, 3: -1, 2: -2}
@@ -1058,6 +1123,9 @@ def main():
     r.add_argument('-f', '--input-file', help='file with lines of terminal input')
     r.add_argument('--steps', type=int, default=50_000_000)
     r.add_argument('--core', type=int, default=0, help='the core number register ($10001C)')
+    r.add_argument('--input-file1', help='core 1 runs too, with this input (sharing the '
+                   'mailboxes, locks and shared RAM with core 0)')
+    r.add_argument('--out1', help="where core 1's terminal output goes (default: after core 0's)")
     args = ap.parse_args()
 
     comp = Compiler()
@@ -1078,11 +1146,27 @@ def main():
             with open(args.input_file, encoding='ascii') as f:
                 lines += f.read().splitlines()
         rx = ''.join(line + '\r' for line in lines).encode('ascii')
-        m = Machine(comp.mem, rx, args.core)
-        m.run(args.steps)
+        if args.input_file1:
+            with open(args.input_file1, encoding='ascii') as f:
+                rx1 = ''.join(line + '\r' for line in f.read().splitlines()).encode('ascii')
+            shared = Shared()
+            m = Machine(comp.mem, rx, 0, shared)
+            m1 = Machine(comp.mem, rx1, 1, shared)
+            run_two(m, m1, args.steps)
+            text1 = m1.tx.decode('ascii', 'replace') + (
+                f'\n[core 1: {m1.steps} instructions, dsp={m1.dsp}, rsp={m1.rsp}, fsp={m1.fsp}]\n')
+            if args.out1:
+                with open(args.out1, 'w', encoding='ascii', newline='') as f:
+                    f.write(text1)
+        else:
+            m = Machine(comp.mem, rx, args.core)
+            m.run(args.steps)
+            m1 = None
         sys.stdout.write(m.tx.decode('ascii', 'replace'))
         print(f'\n[{m.steps} instructions, dsp={m.dsp}, rsp={m.rsp}, fsp={m.fsp}, '
               f'leds={m.leds:04b}]')
+        if m1 and not args.out1:
+            sys.stdout.write('\n=== core 1 ===\n' + text1)
 
 
 if __name__ == '__main__':

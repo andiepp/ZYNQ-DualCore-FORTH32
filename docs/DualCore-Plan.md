@@ -63,7 +63,15 @@ Three parts, each checked before the next:
    the LEDs, no errors, about 13,600 clocks of waiting each in 2.8 million) and single-core
    `smoke`/`divide` (unchanged). Built: 12,485 LUTs, 73 block RAMs, 21 DSPs; 0.905 ns slack
    at 50 MHz (3.2 ns with one core), 0.134 ns at 200 MHz. Not on the board yet (step 4).
-2. Mailboxes, the shared RAM window and locks.
+2. **Mailboxes, locks and shared RAM** (2026-11-04, design.md 5.2 and 5.3): a 32-word
+   mailbox per direction (`$100050` data, `$100054` status), 8 locks (`$100060 + 4n`, taken
+   by a store and checked by a read, so the CPU's read-ahead never takes one), 4 KB shared
+   RAM at `$101000`. AXI 0x3C also gives each mailbox's fill level. The simulator has a
+   two-core run (`--input-file1`): both cores step in turn and share these. Checked with
+   `run_dual.ps1 -Input0 mail0 -Input1 mail1`; without the locks, the simulator's shared
+   counter ends at 1709 instead of 2000, so the test would catch a broken lock. RTL = ISS
+   on both cores (2000 in the RTL too), and part 1's test still passes. Built: +252 LUTs,
+   +1 block RAM; 0.779 ns slack at 50 MHz, 0.142 ns at 200 MHz.
 3. Pin and peripheral ownership per core.
 
 ## Step 3 onwards: notes

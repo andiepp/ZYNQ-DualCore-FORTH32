@@ -13,7 +13,8 @@ module fifo #(
     input  wire             pop,
     output wire [WIDTH-1:0] dout,
     output wire             empty,
-    output wire             full
+    output wire             full,
+    output wire [DEPTH_LOG2:0] count       // words in the FIFO
 );
 
     reg [WIDTH-1:0]    mem [0:(1<<DEPTH_LOG2)-1];
@@ -23,6 +24,7 @@ module fifo #(
     assign full  = (wr_ptr[DEPTH_LOG2-1:0] == rd_ptr[DEPTH_LOG2-1:0]) &&
                    (wr_ptr[DEPTH_LOG2] != rd_ptr[DEPTH_LOG2]);
     assign dout  = mem[rd_ptr[DEPTH_LOG2-1:0]];
+    assign count = wr_ptr - rd_ptr;
 
     always @(posedge clk) begin
         if (rst) begin

@@ -9,6 +9,10 @@
 // that clock came from the other core's address). The core that waited goes first the
 // next time, so neither waits more than a few clocks. Core 1 stays in reset until the ARM
 // releases it, so a single-core ARM program sees the single-core system.
+//
+// On the bus, for the cores to work together: a mailbox in each direction ($100050 data,
+// $100054 status, as seen by the core using them), 8 locks ($100060..) and a 4 KB shared
+// RAM ($101000..$101FFF).
 
 `default_nettype none
 
@@ -125,7 +129,7 @@ module forth_system #(
         .rx_dout(rx_dout0), .tx_dout(tx_dout0),
         .rx_empty(rx_empty[0]), .rx_full(rx_full[0]), .tx_empty(tx_empty[0]), .tx_full(tx_full[0]),
         .mem_addr(a0), .mem_we(we0), .mem_byte(by0), .mem_wdata(wd0), .mem_rd(rd0),
-        .st_req(sr0), .cpu_t(t0), .cpu_pc(pc0), .io_rdata(io_rdata)
+        .st_req(sr0), .cpu_t(t0), .cpu_pc(pc0), .io_rdata(io_bus_rdata)
     );
 
     hf32_node n1 (
@@ -136,20 +140,49 @@ module forth_system #(
         .rx_dout(rx_dout1), .tx_dout(tx_dout1),
         .rx_empty(rx_empty[1]), .rx_full(rx_full[1]), .tx_empty(tx_empty[1]), .tx_full(tx_full[1]),
         .mem_addr(a1), .mem_we(we1), .mem_byte(by1), .mem_wdata(wd1), .mem_rd(rd1),
-        .st_req(sr1), .cpu_t(t1), .cpu_pc(pc1), .io_rdata(io_rdata)
+        .st_req(sr1), .cpu_t(t1), .cpu_pc(pc1), .io_rdata(io_bus_rdata)
     );
 
     // the I/O bus: the owner's address and store
     wire [31:0] mem_addr  = owner ? a1 : a0;
     wire        mem_we    = owner ? we1 : we0;
+    wire        mem_byte  = owner ? by1 : by0;
     wire [31:0] mem_wdata = owner ? wd1 : wd0;
     wire        io_addr   = mem_addr[20];
+    wire        shm_addr  = io_addr && mem_addr[12];    // the shared RAM window
+
+    // ------------------------------------------------------------------
+    // Shared RAM: 1K x 32 (one block RAM) at $101000..$101FFF, words and bytes, read
+    // like the cores' own RAM (data one clock after the address)
+    // ------------------------------------------------------------------
+    reg  [31:0] shm [0:1023];
+    reg  [31:0] shm_dout = 32'd0;
+    reg         shm_q    = 1'b0;
+    wire        shm_we   = mem_we && shm_addr;
+    wire [3:0]  shm_web  = !shm_we ? 4'b0000 : !mem_byte ? 4'b1111 : 4'b0001 << mem_addr[1:0];
+    wire [31:0] shm_din  = mem_byte ? {4{mem_wdata[7:0]}} : mem_wdata;
+
+    integer si;
+    initial
+        for (si = 0; si < 1024; si = si + 1)
+            shm[si] = 32'd0;
+
+    integer sb;
+    always @(posedge clk) begin
+        for (sb = 0; sb < 4; sb = sb + 1)
+            if (shm_web[sb]) shm[mem_addr[11:2]][8*sb +: 8] <= shm_din[8*sb +: 8];
+        shm_dout <= shm[mem_addr[11:2]];
+        shm_q    <= shm_addr;
+    end
+
+    // what the cores read from the bus: the shared RAM or the I/O registers
+    wire [31:0] io_bus_rdata = shm_q ? shm_dout : io_rdata;
 
     // I/O register k sits at $100000 + 4k; only address bits 9..2 are decoded. Registers
     // 0..127 are the board I/O of the 16-bit design, 128.. the serial interfaces, the DDS
     // and the tone generator ($100200..). Registers 0 (terminal), 1 (its status) and 7
     // (the core number) belong to the core on the bus.
-    wire       io_store = mem_we && io_addr;
+    wire       io_store = mem_we && io_addr && !mem_addr[12];
     wire [7:0] io_k8    = mem_addr[9:2];
     wire [6:0] io_k     = io_k8[6:0];
     wire       io_lo    = !io_k8[7];
@@ -158,6 +191,55 @@ module forth_system #(
     // a read with a side effect (a UART's RX data): the core that consumes it
     wire u0_rd = (rd0 && t0 == 32'h0010_0200) || (rd1 && t1 == 32'h0010_0200);
     wire u1_rd = (rd0 && t0 == 32'h0010_0210) || (rd1 && t1 == 32'h0010_0210);
+
+    // ------------------------------------------------------------------
+    // Mailboxes: mb0 holds the words sent to core 0, mb1 those sent to core 1. A core
+    // writes $100050 to send to the other; its read of $100050 takes the oldest word sent
+    // to it (removed when the instruction consumes it, like the terminal). Each is cleared
+    // with its receiver's reset.
+    // ------------------------------------------------------------------
+    wire        io_mail = io_lo && io_k[6:2] == 5'd5;      // $100050..$10005C
+    wire        io_lock = io_lo && io_k[6:3] == 4'd3;      // $100060..$10007C
+    wire [31:0] mb0_dout, mb1_dout;
+    wire        mb0_empty, mb0_full, mb1_empty, mb1_full;
+    wire [5:0]  mb0_count, mb1_count;
+    wire        mail_send = io_store && io_mail && io_k[1:0] == 2'd0;
+
+    fifo #(.WIDTH(32), .DEPTH_LOG2(5)) mb0 (
+        .clk(clk), .rst(cpu_rst[0]), .push(mail_send && owner), .din(mem_wdata),
+        .pop(rd0 && t0 == 32'h0010_0050), .dout(mb0_dout),
+        .empty(mb0_empty), .full(mb0_full), .count(mb0_count)
+    );
+    fifo #(.WIDTH(32), .DEPTH_LOG2(5)) mb1 (
+        .clk(clk), .rst(cpu_rst[1]), .push(mail_send && !owner), .din(mem_wdata),
+        .pop(rd1 && t1 == 32'h0010_0050), .dout(mb1_dout),
+        .empty(mb1_empty), .full(mb1_full), .count(mb1_count)
+    );
+
+    // ------------------------------------------------------------------
+    // Locks 0..7 at $100060 + 4n. Write 1: take it if it is free; write 0: release it
+    // (only its holder can). Read: 0 free, 1 held by the reading core, 2 by the other.
+    // A core's reset releases the locks it holds.
+    // ------------------------------------------------------------------
+    reg  [7:0] lk_taken = 8'd0, lk_core = 8'd0;
+    wire [2:0] lk_n     = io_k[2:0];
+
+    integer li;
+    always @(posedge clk) begin
+        for (li = 0; li < 8; li = li + 1)
+            if (rst || (lk_taken[li] && cpu_rst[lk_core[li]]))
+                lk_taken[li] <= 1'b0;
+        if (!rst && io_store && io_lock) begin
+            if (mem_wdata[0]) begin
+                if (!lk_taken[lk_n]) begin
+                    lk_taken[lk_n] <= 1'b1;
+                    lk_core[lk_n]  <= owner;
+                end
+            end else if (lk_taken[lk_n] && lk_core[lk_n] == owner) begin
+                lk_taken[lk_n] <= 1'b0;
+            end
+        end
+    end
 
     // ------------------------------------------------------------------
     // Buttons: synchronize, sample every 10 ms (debounce). Millisecond and microsecond
@@ -380,6 +462,8 @@ module forth_system #(
     // the RAM.
     //   k 0..7     $100000..$10001C  terminal, its status, LEDs, buttons, RGB, ms timer,
     //                                us timer, core number
+    //   k 20, 21   $100050, $100054  mailbox data and status
+    //   k 24..31   $100060..$10007C  locks 0..7
     //   k 8 + 4p   $100020 + 16p     port p: +0 pin levels, +4 output latch, +8 direction
     //   k 32..63   $100080..$1000FC  XADC status registers 0..31
     //   k 64 + 4c  $100100 + 16c     PWM channel c: +0/+4 period, +8 duty, +12 control
@@ -427,6 +511,16 @@ module forth_system #(
             io_rdata <= tone_rdata;
         else if (io_hi)
             io_rdata <= 32'd0;
+        else if (io_mail)
+            case (io_k[1:0])
+                2'd0:    io_rdata <= owner ? mb1_dout : mb0_dout;
+                // bit 0: a word is waiting for me, bit 1: room to send to the other
+                2'd1:    io_rdata <= owner ? {30'd0, !mb0_full, !mb1_empty}
+                                           : {30'd0, !mb1_full, !mb0_empty};
+                default: io_rdata <= 32'd0;
+            endcase
+        else if (io_lock)
+            io_rdata <= !lk_taken[lk_n] ? 32'd0 : lk_core[lk_n] == owner ? 32'd1 : 32'd2;
         else if (io_k[6:5] == 2'b01)
             io_rdata <= {16'd0, xadc_rdata};
         else if (io_pwm)
@@ -571,7 +665,8 @@ module forth_system #(
                     4'd12: s_axi_rdata <= pg_status;
                     4'd13: s_axi_rdata <= pg_out;
                     4'd14: s_axi_rdata <= {12'd0, func_sel, func_word};
-                    4'd15: s_axi_rdata <= 32'd2;                // number of cores
+                    // the number of cores, the words waiting in each mailbox
+                    4'd15: s_axi_rdata <= {10'd0, mb1_count, 2'd0, mb0_count, 8'd2};
                     default: s_axi_rdata <= 32'd0;
                 endcase
             end

@@ -46,11 +46,11 @@ module uart #(
 
     fifo #(.WIDTH(8), .DEPTH_LOG2(6)) txq (
         .clk(clk), .rst(rst || !enable), .push(we && reg_sel == 2'd0), .din(wdata[7:0]),
-        .pop(tx_pop), .dout(tx_dout), .empty(tx_empty), .full(tx_full)
+        .pop(tx_pop), .dout(tx_dout), .empty(tx_empty), .full(tx_full), .count()
     );
     fifo #(.WIDTH(8), .DEPTH_LOG2(6)) rxq (
         .clk(clk), .rst(rst || !enable), .push(rx_push), .din(rx_byte),
-        .pop(rd), .dout(rx_dout), .empty(rx_empty), .full(rx_full)
+        .pop(rd), .dout(rx_dout), .empty(rx_empty), .full(rx_full), .count()
     );
 
     // transmitter: start bit, 8 data bits LSB first, stop bit

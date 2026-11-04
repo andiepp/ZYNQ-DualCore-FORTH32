@@ -134,36 +134,38 @@ clock and that the compiler never has to schedule around anything except the sto
 
 ### 2.2 Resources used
 
-From the implementation report of the two-core design (ZYNQ-DualCore-FORTH32 step 3, part 1:
-two cores side by side, `build/hw/utilization.rpt`). The single core with the divider
-(step 2) used 8,321 LUTs, 4,409 flip-flops, 41 block RAMs and 15 DSPs; the second core with its
-RAM, FIFOs and the I/O arbiter added 4,164 LUTs, 688 flip-flops, 32 block RAMs and 6 DSPs:
+From the implementation report of the two-core design (ZYNQ-DualCore-FORTH32 step 3, parts 1
+and 2, `build/hw/utilization.rpt`). The single core with the divider (step 2) used 8,321 LUTs,
+4,409 flip-flops, 41 block RAMs and 15 DSPs; the second core with its RAM, FIFOs and the I/O
+arbiter added 4,164 LUTs, 688 flip-flops, 32 block RAMs and 6 DSPs; the mailboxes, locks and
+shared RAM another 252 LUTs, 41 flip-flops and 1 block RAM:
 
 | Resource | Used | Available | % | Mostly in |
 |---|---|---|---|---|
-| Slice LUTs | 12,485 | 53,200 | 23.5 | two CPU datapaths with FPU and divider, peripherals, pin router |
-| of which LUT RAM | 374 | 17,400 | 2.1 | each core's three 32-entry stacks, FIFOs |
-| Flip-flops | 5,097 | 106,400 | 4.8 | |
-| Slices | 4,026 | 13,300 | 30.3 | |
-| Block RAM (36 Kb) | 73 | 140 | 52.1 | 2 × 32 for the two 128 KB Forth RAMs, 9 for the pattern memory |
+| Slice LUTs | 12,737 | 53,200 | 23.9 | two CPU datapaths with FPU and divider, peripherals, pin router |
+| of which LUT RAM | 418 | 17,400 | 2.4 | each core's three 32-entry stacks, the FIFOs and mailboxes |
+| Flip-flops | 5,138 | 106,400 | 4.8 | |
+| Slices | 4,059 | 13,300 | 30.5 | |
+| Block RAM (36 Kb) | 74 | 140 | 52.9 | 2 × 32 for the two 128 KB Forth RAMs, 9 for the pattern memory, 1 for the shared RAM |
 | DSP48 | 21 | 220 | 9.5 | per core the 32 × 32 multiplier and the FPU significand multiplier; PWM duty products, tone volume |
 | Bonded I/O pins | 94 | 125 | 75.2 | LEDs 10, buttons/switches 6, shield 42, analog 18, Pmods 16, audio 2 |
 | XADC | 1 | 1 | 100 | |
 | BUFGCTRL | 2 | 32 | 6.3 | the two fabric clocks |
 
-The I/O pins and the XADC are limited by the board, not by the design. 67 block RAMs and
+The I/O pins and the XADC are limited by the board, not by the design. 66 block RAMs and
 about 40,000 LUTs are still free.
 
 ### 2.3 Timing
 
 | Clock | Worst setup slack | Worst hold slack | Critical path |
 |---|---|---|---|
-| FCLK0, 50 MHz (20 ns) | 0.905 ns | 0.035 ns | core 1's float stack pointer → I/O bus → pattern generator memory enable |
-| FCLK1, 200 MHz (5 ns) | 0.134 ns | 0.090 ns | pattern generator: output register → pin register |
+| FCLK0, 50 MHz (20 ns) | 0.779 ns | 0.025 ns | core 1's RAM output → next T → I/O bus → pattern generator memory enable |
+| FCLK1, 200 MHz (5 ns) | 0.142 ns | 0.098 ns | pattern generator: fetch register → pattern memory address |
 
-All constraints are met (two cores). The 50 MHz margin went from 3.2 ns (one core) to
-0.9 ns: the worst path now runs from a core through the arbiter's choice of the bus owner
-into the shared I/O decode, the cost of sharing one I/O bus. If later steps make it negative,
+All constraints are met (two cores with mailboxes, locks and shared RAM). The 50 MHz margin
+went from 3.2 ns (one core) to 0.9 ns with the second core and 0.8 ns with part 2: the worst
+path runs from a core through the arbiter's choice of the bus owner into the shared I/O
+decode, the cost of sharing one I/O bus. If later steps make it negative,
 a register stage on the bus (one more clock for an I/O access) is the remedy. The 200 MHz
 pattern generator has never had much margin (0.000 ns in 3.1, 0.464 ns in step 2) and
 depends on the placement around it.
@@ -583,9 +585,27 @@ I/O space. When both are, one goes first (the arbiter's `pr1`):
 
 The core that waited goes first next time, unless the first one is still repeating its own
 read; so neither waits more than a few clocks, and only when both use the I/O in the same
-clock. Registers `$100000` and `$100004` (the terminal) and `$10001C` (the core number)
-answer for the core on the bus; all other registers are shared. A UART's data read (which
-pops the byte) belongs to the core whose instruction consumes it.
+clock. Registers `$100000` and `$100004` (the terminal), `$10001C` (the core number) and
+the mailbox and lock registers answer for the core on the bus; all other registers are
+shared. A read that removes what it reads (a terminal, mailbox or UART byte) happens when
+the instruction consumes the value, and belongs to that instruction's core.
+
+**Working together.** Three things on the bus exist only for the two cores:
+
+- **Mailboxes:** a 32-word FIFO in each direction. A core writes `$100050` to send a word to
+  the other core, and reads `$100050` to take the oldest word sent to it; `$100054` says
+  whether a word is waiting (bit 0) and whether there is room to send (bit 1). A word sent
+  into a full mailbox is lost, and a read of an empty one gives 0 and takes nothing, so
+  programs check the status first (as with the terminal). A core's reset clears the mailbox
+  it reads from.
+- **Locks:** 8 at `$100060 + 4n`. Writing 1 takes the lock if it is free, writing 0 releases
+  it (only the core that holds it can); reading gives 0 (free), 1 (held by the reading core)
+  or 2 (held by the other). Taking a lock is therefore a store followed by a check:
+  `begin 1 over ! dup @ 1 = until`. A read alone never takes one, because the CPU reads the
+  next T ahead whether or not an instruction will use it. A core's reset releases its locks.
+- **Shared RAM:** 4 KB (one block RAM) at `$101000..$101FFF`, words and bytes, with the data
+  one clock after the address like the cores' own RAM. It is the only memory both cores can
+  reach; what it holds is up to the programs, guarded by the locks where it matters.
 
 ### 5.3 I/O map
 
@@ -599,6 +619,10 @@ pops the byte) belongs to the core whose instruction consumes it.
 | `$100014` | millisecond counter (32 bits, free running) | – |
 | `$100018` | microsecond counter (32 bits, free running) | – |
 | `$10001C` | the core number: 0 or 1 (0 on the single-core 3.x) | – |
+| `$100050` | the oldest word sent to this core (taken by the read; 0 if none) | send a word to the other core (lost if its mailbox is full) |
+| `$100054` | bit 0 = a word is waiting, bit 1 = room to send | – |
+| `$100060 + 4n` | lock n (0..7): 0 free, 1 held by this core, 2 by the other | 1 = take it if free, 0 = release it (holder only) |
+| `$101000..$101FFF` | shared RAM, 4 KB, words and bytes | the same |
 | `$100020 + 16p` | port p (0..2): pin levels, synchronized; pin n = bit n mod 16 of port n / 16 | – |
 | `$100024 + 16p` | port p: output latch | the same |
 | `$100028 + 16p` | port p: direction, 1 = output (all 0 after reset) | the same |
@@ -860,7 +884,7 @@ clears CTRL1, so an ARM program that knows only core 0 sees the single-core syst
 | 0x30 | PG_STATUS: bits 27..16 = the pattern generator's current step, bits 6..0 = its status |
 | 0x34 | PG_OUT: bits 31..16 = the channel enable mask, bits 15..0 = the current output levels |
 | 0x38 | FUNC: a write selects a pin-function entry 0..13; a read returns bits 19..16 = the selection, bit 15 = on, bits 5..0 = the pin |
-| 0x3C | CORES: the number of cores (2; it reads 0 on the single-core 3.x) |
+| 0x3C | CORES: bits 7..0 = the number of cores (2; the register reads 0 on the single-core 3.x), bits 13..8 = words waiting in core 0's mailbox, bits 21..16 = in core 1's |
 | 0x40..0x54 | core 1's CTRL, MEM_ADDR, MEM_DATA, TX_POP, RX_PUSH, STATUS |
 
 The slave handles one transaction per direction at a time and always answers OKAY. Registers
@@ -1436,7 +1460,7 @@ All run in the Vivado simulator (xsim) through PowerShell scripts in `sim/`:
 
 | Testbench | Script | What it checks |
 |---|---|---|
-| `tb_forth.v` | `run_sim.ps1 -InputFile <session> [-InputFile1 <session>]` | the whole system: preloads the kernel, releases the CPU over AXI-Lite like the ARM, feeds a session into the RX FIFO and prints the TX FIFO; pauses the CPU at random moments to read RAM, and walks the dictionary at the end. Its output is the same as the simulator's for the same session. With a second session, core 1 runs it at the same time (output in `build/sim/core1.txt`); `run_dual.ps1` compares both cores with the simulator (`hf32.py run --core n`), with `sim/dual0.txt`/`dual1.txt`, in which both cores read the core number and write the LEDs 3,000 times each. A simulated-time limit (200 ms) ends a session that waits forever |
+| `tb_forth.v` | `run_sim.ps1 -InputFile <session> [-InputFile1 <session>]` | the whole system: preloads the kernel, releases the CPU over AXI-Lite like the ARM, feeds a session into the RX FIFO and prints the TX FIFO; pauses the CPU at random moments to read RAM, and walks the dictionary at the end. Its output is the same as the simulator's for the same session. With a second session, core 1 runs it at the same time (output in `build/sim/core1.txt`); `run_dual.ps1` compares both cores with the simulator's two-core run (`hf32.py run -f <core 0> --input-file1 <core 1>`), with `sim/dual0.txt`/`dual1.txt` (both cores read the core number and write the LEDs 3,000 times each) and `sim/mail0.txt`/`mail1.txt` (100 words through the mailboxes, the lock states, a byte through the shared RAM, and a shared counter both cores increment 1,000 times under a lock). A simulated-time limit (200 ms) ends a session that waits forever |
 | `tb_mcu.v` | `run_mcu.ps1` | the multi-cycle unit against the vectors of `test_fpu.py`, bit for bit |
 | `tb_periph.v` | `run_periph.ps1` | UART 0 → 1 at 1 MBd and 115,200 Bd with all byte values, overrun and framing errors; SPI loopback in modes 0..3, 8/16/32 bits, both bit orders, fastest clock; I²C against a 24Cxx-style slave model that stretches SCL; DDS frequency over 1 ms; the tone modulator's duty: 563 checks |
 | `tb_patgen.v` | `run_patgen.ps1` | the pattern generator, tick by tick against a model of the step semantics |

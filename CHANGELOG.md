@@ -32,6 +32,11 @@ version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
   firmware 3.1 still runs on this logic as a single core. Checked with the new
   `sim/run_dual.ps1` (both cores at once, each against the simulator's `--core n`) and
   single-core `smoke`/`divide`; 12,485 LUTs, 73 block RAMs, timing met (0.9 ns at 50 MHz).
+- **Mailboxes, locks and shared RAM** (step 3, part 2): a 32-word mailbox in each direction
+  (`$100050`, status `$100054`), 8 locks (`$100060 + 4n`: write 1 to take, 0 to release, read
+  0/1/2 = free/mine/the other's), 4 KB shared RAM at `$101000`. The simulator runs both cores
+  together with `--input-file1`; checked with `sim/mail0.txt`/`mail1.txt` (RTL = ISS).
+  12,737 LUTs, 74 block RAMs, timing met (0.78 ns at 50 MHz).
 
 ## ZYNQ-FPGA-FORTH32
 

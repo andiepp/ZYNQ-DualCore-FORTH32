@@ -1,5 +1,6 @@
 # Runs both cores in the RTL testbench at once (core 0 with one input, core 1 with another)
-# and compares each core's output with the instruction-set simulator's for that core.
+# and compares each core's output with the instruction-set simulator's two-core run.
+# The inputs must not depend on timing between the cores (wait for mail, use locks).
 # Usage (from the repository root): .\sim\run_dual.ps1 [-Input0 dual0] [-Input1 dual1]
 param(
     [string]$Input0 = 'dual0',
@@ -21,8 +22,9 @@ $iss1 = Join-Path $out "$Input1.core1.iss.txt"
 $rtl0 = Join-Path $out "$Input0.core0.rtl.txt"
 $rtl1 = Join-Path $out "$Input1.core1.rtl.txt"
 $kernel = Join-Path $root 'forth\kernel.fs'
-python (Join-Path $root 'tools\hf32.py') run $kernel -f (Join-Path $root "sim\$Input0.txt") --core 0 2>&1 | Out-File -Encoding ascii $iss0
-python (Join-Path $root 'tools\hf32.py') run $kernel -f (Join-Path $root "sim\$Input1.txt") --core 1 2>&1 | Out-File -Encoding ascii $iss1
+# one simulator run with both cores (shared mailboxes, locks and shared RAM)
+python (Join-Path $root 'tools\hf32.py') run $kernel -f (Join-Path $root "sim\$Input0.txt") `
+    --input-file1 (Join-Path $root "sim\$Input1.txt") --out1 $iss1 2>&1 | Out-File -Encoding ascii $iss0
 
 $arguments = @{ InputFile = "sim\$Input0.txt"; InputFile1 = "sim\$Input1.txt" }
 if ($Vivado) { $arguments.Vivado = $Vivado }

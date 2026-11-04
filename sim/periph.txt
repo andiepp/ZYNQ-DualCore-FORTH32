@@ -1,0 +1,10 @@
+115200 26 27 0 uart-open 115200 28 29 1 uart-open
+65 0 uart-emit 1 uart-key emit 66 1 uart-emit 0 uart-key emit
+0 uart-status . 1 uart-status . 0 uart-close 1 uart-close
+pin-sck pin-mosi pin-miso 0 spi-open 5000000 0 spi-hz
+$5A 0 spi-xfer hex . decimal 3 0 spi-mode 32 0 spi-bits
+$12345678 0 spi-xfer hex . decimal 0 spi-close
+pin-sck pin-mosi pin-miso 1 spi-open 1 1 spi-lsb $C3 1 spi-xfer . 1 spi-close
+400000 i2c-open i2c-scan $50 i2c-probe . i2c-close
+1000000e dds-hz 30 dds-pin : w 3000 0 do loop ; w dds-off
+1000e tone square wave w tone-off

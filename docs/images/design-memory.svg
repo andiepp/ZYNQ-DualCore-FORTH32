@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 450" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <style>
+      .a{font-family:Consolas,monospace;font-size:11px;fill:#23476b}
+      .t{font-weight:600;font-size:12px}
+      .s{font-size:11px;fill:#333}
+      .h{font-weight:700;font-size:14px}
+      .k{fill:#fff4e0;stroke:#b36b00;stroke-width:1.2}
+      .u{fill:#fff;stroke:#23476b;stroke-width:1.2}
+      .m{fill:#f4f4f4;stroke:#999;stroke-width:1;stroke-dasharray:4 3}
+      .io{fill:#f3f8ef;stroke:#3d7a2a;stroke-width:1.2}
+      .n{fill:#e3f0dc;stroke:#3d7a2a;stroke-width:1.2}
+    </style>
+  </defs>
+  <rect width="820" height="450" fill="#fff"/>
+  <text class="h" x="200" y="22" text-anchor="middle">Byte addresses</text>
+  <text class="h" x="610" y="22" text-anchor="middle">I/O registers (register k at $100000 + 4k)</text>
+
+  <!-- left column -->
+  <rect class="k" x="120" y="40" width="200" height="28"/>
+  <text class="t" x="220" y="58" text-anchor="middle">jump cold (reset vector)</text>
+  <text class="a" x="112" y="52" text-anchor="end">00000</text>
+  <rect class="k" x="120" y="68" width="200" height="92"/>
+  <text class="t" x="220" y="100" text-anchor="middle">kernel: headers, code, data</text>
+  <text class="s" x="220" y="118" text-anchor="middle">24,044 bytes, 414 words</text>
+  <text class="s" x="220" y="134" text-anchor="middle">(tib, ssnap, fssnap, pin-owner …)</text>
+  <text class="a" x="112" y="80" text-anchor="end">00004</text>
+  <rect class="u" x="120" y="160" width="200" height="110"/>
+  <text class="t" x="220" y="200" text-anchor="middle">your words and data</text>
+  <text class="s" x="220" y="218" text-anchor="middle">HERE grows upward</text>
+  <text class="s" x="220" y="234" text-anchor="middle">107 KB free</text>
+  <text class="a" x="112" y="172" text-anchor="end">05DEC</text>
+  <text class="a" x="112" y="268" text-anchor="end">1FFFF</text>
+  <rect class="m" x="120" y="270" width="200" height="60"/>
+  <text class="s" x="220" y="298" text-anchor="middle">the RAM again every 128 KB</text>
+  <text class="s" x="220" y="314" text-anchor="middle">(address bits 19..17 ignored)</text>
+  <text class="a" x="112" y="282" text-anchor="end">20000</text>
+  <text class="a" x="112" y="328" text-anchor="end">FFFFF</text>
+  <rect class="io" x="120" y="330" width="200" height="56"/>
+  <text class="t" x="220" y="354" text-anchor="middle">I/O registers</text>
+  <text class="s" x="220" y="372" text-anchor="middle">address bit 20 set</text>
+  <text class="a" x="112" y="342" text-anchor="end">100000</text>
+  <rect class="m" x="120" y="386" width="200" height="40"/>
+  <text class="s" x="220" y="410" text-anchor="middle">repeats every 1 KB</text>
+  <text class="a" x="112" y="398" text-anchor="end">100400</text>
+  <path d="M320,330 L420,40 M320,386 L420,430" stroke="#3d7a2a" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
+
+  <!-- right column -->
+  <g>
+    <rect class="io" x="420" y="40" width="380" height="26"/><text class="a" x="428" y="57">100000</text><text class="s" x="490" y="57">terminal RX/TX, status, LEDs, buttons, RGB, ms, µs</text>
+    <rect class="io" x="420" y="66" width="380" height="26"/><text class="a" x="428" y="83">100020</text><text class="s" x="490" y="83">3 pin ports × (levels, latch, direction)</text>
+    <rect class="io" x="420" y="92" width="380" height="26"/><text class="a" x="428" y="109">100080</text><text class="s" x="490" y="109">32 XADC status registers</text>
+    <rect class="io" x="420" y="118" width="380" height="26"/><text class="a" x="428" y="135">100100</text><text class="s" x="490" y="135">PWM channels 0..3 (period lo/hi, duty, control)</text>
+    <rect class="io" x="420" y="144" width="380" height="26"/><text class="a" x="428" y="161">100180</text><text class="s" x="490" y="161">pattern generator registers 0..10</text>
+    <text class="s" x="610" y="186" text-anchor="middle" fill="#3d7a2a">— registers 128 and up: new in 3.1 —</text>
+    <rect class="n" x="420" y="194" width="380" height="26"/><text class="a" x="428" y="211">100200</text><text class="s" x="490" y="211">UART 0 (data, status, divider, pins)</text>
+    <rect class="n" x="420" y="220" width="380" height="26"/><text class="a" x="428" y="237">100210</text><text class="s" x="490" y="237">UART 1</text>
+    <rect class="n" x="420" y="246" width="380" height="26"/><text class="a" x="428" y="263">100220</text><text class="s" x="490" y="263">SPI 0 (data, status, control, half, pins)</text>
+    <rect class="n" x="420" y="272" width="380" height="26"/><text class="a" x="428" y="289">100240</text><text class="s" x="490" y="289">SPI 1</text>
+    <rect class="n" x="420" y="298" width="380" height="26"/><text class="a" x="428" y="315">100260</text><text class="s" x="490" y="315">I²C (command/status, quarter period, pins)</text>
+    <rect class="n" x="420" y="324" width="380" height="26"/><text class="a" x="428" y="341">100280</text><text class="s" x="490" y="341">DDS (tuning word, control)</text>
+    <rect class="n" x="420" y="350" width="380" height="26"/><text class="a" x="428" y="367">1002A0</text><text class="s" x="490" y="367">tone (tuning, control, volume, status)</text>
+    <rect class="m" x="420" y="376" width="380" height="54"/><text class="s" x="610" y="408" text-anchor="middle">unused: reads 0, writes ignored</text>
+  </g>
+</svg>

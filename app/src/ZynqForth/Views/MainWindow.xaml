@@ -1,0 +1,412 @@
+<Window x:Class="ZynqForth.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ZynqForth.Controls"
+        Title="ZYNQ-DualCore-FORTH32" Width="1360" Height="860" MinWidth="900" MinHeight="560"
+        Background="{DynamicResource Zf.Window}" Foreground="{DynamicResource Zf.Text}"
+        FontFamily="{DynamicResource Zf.UiFont}" FontSize="{DynamicResource Zf.UiSize}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="200" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition x:Name="BoardRow" Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- toolbar: connection and skin -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left" Text="ZYNQ-DualCore-FORTH32" FontWeight="Bold" FontSize="16" Margin="2,0,16,0"
+                       VerticalAlignment="Center" Foreground="{DynamicResource Zf.Accent}" Effect="{DynamicResource Zf.TextGlow}" />
+            <ComboBox DockPanel.Dock="Left" Width="90" ItemsSource="{Binding Ports}" SelectedItem="{Binding SelectedPort}"
+                      IsEnabled="{Binding IsConnected, Converter={StaticResource Not}}" ToolTip="The board's USB serial port" />
+            <Button DockPanel.Dock="Left" Content="↻" Command="{Binding RefreshPortsCommand}" ToolTip="Look for serial ports again"
+                    IsEnabled="{Binding IsConnected, Converter={StaticResource Not}}" />
+            <Button DockPanel.Dock="Left" Content="{Binding ConnectLabel}" Command="{Binding ConnectCommand}" MinWidth="90" />
+            <Border DockPanel.Dock="Left" BorderBrush="{DynamicResource Zf.Border}" BorderThickness="1" CornerRadius="3" Padding="3,1"
+                    Margin="12,0,0,0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource Zf.Tab}" GroupName="CoreTab" Content="{Binding Cores[0].TabLabel}" MinWidth="64"
+                                 IsChecked="{Binding IsCore0Selected}" Margin="0"
+                                 ToolTip="Show core 0: its terminal, editor, stacks, dictionary and saved source (Ctrl+1)" />
+                    <RadioButton Style="{StaticResource Zf.Tab}" GroupName="CoreTab" Content="{Binding Cores[1].TabLabel}" MinWidth="64"
+                                 IsChecked="{Binding IsCore1Selected}" Margin="0"
+                                 ToolTip="Show core 1: its terminal, editor, stacks, dictionary and saved source (Ctrl+2). A dot: it printed something meanwhile." />
+                </StackPanel>
+            </Border>
+
+            <Button DockPanel.Dock="Right" Content="Manual" Click="Manual_Click" Margin="12,0,0,0"
+                    ToolTip="Open the user manual (PDF): the app, the interpreter, every word, examples (F1)" />
+            <CheckBox DockPanel.Dock="Right" Content="Board" IsChecked="{Binding ShowBoard}" Margin="10,0,0,0"
+                      ToolTip="Show the board: LEDs, buttons, switches, shield pins and analog inputs, live" />
+            <ComboBox DockPanel.Dock="Right" Width="130" ItemsSource="{Binding SkinNames}" SelectedItem="{Binding SelectedSkin}" />
+            <TextBlock DockPanel.Dock="Right" Text="Skin" Style="{StaticResource Zf.Dim}" Margin="0,0,6,0" />
+            <TextBlock Text="{Binding ConnectionText}" ToolTip="{Binding ConnectionDetails}" Style="{StaticResource Zf.Dim}" Margin="10,0,12,0"
+                       TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
+        <!-- editor | terminal | stack, dictionary, saved source -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="EditorColumn" Width="*" MinWidth="240" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition x:Name="TerminalColumn" Width="*" MinWidth="240" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="290" MinWidth="200" />
+            </Grid.ColumnDefinitions>
+
+            <!-- editor: Forth source or pattern -->
+            <Border Grid.Column="0" Style="{StaticResource Zf.PanelBox}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                        <RadioButton Style="{StaticResource Zf.Tab}" GroupName="EditorTab" Content="Source" IsChecked="{Binding ShowSource}"
+                                     ToolTip="The Forth source editor" />
+                        <RadioButton Style="{StaticResource Zf.Tab}" GroupName="EditorTab" Content="Pattern" IsChecked="{Binding ShowPattern}"
+                                     ToolTip="The pattern generator: 16 channels on Pmod JA/JB in 5 ns steps" />
+                    </StackPanel>
+                    <Grid>
+                        <!-- source -->
+                        <DockPanel Visibility="{Binding ShowSource, Converter={StaticResource VisibleWhen}}">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <TextBlock DockPanel.Dock="Left" Style="{StaticResource Zf.Heading}" Margin="0,0,10,0">
+                                    <Run Text="{Binding SelectedCore.Name, Mode=OneWay}" Foreground="{DynamicResource Zf.Accent}" /><Run Text=" · " /><Run Text="{Binding SelectedCore.Editor.Title, Mode=OneWay}" />
+                                </TextBlock>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="New" Command="{Binding SelectedCore.Editor.NewCommand}" />
+                                    <Button Content="Open…" Command="{Binding SelectedCore.Editor.OpenCommand}" />
+                                    <Button Content="Save" Command="{Binding SelectedCore.Editor.SaveCommand}" ToolTip="Ctrl+S" />
+                                    <Button Content="Save as…" Command="{Binding SelectedCore.Editor.SaveAsCommand}" Margin="0" />
+                                </StackPanel>
+                                <Border />
+                            </DockPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                                <Button Content="Run line / selection" Click="RunSelection_Click" ToolTip="F5: the selected text, or the caret's line, on the shown core" />
+                                <Button Content="Run all" Command="{Binding RunEditorCommand}" ToolTip="Ctrl+F5: the whole text, as if typed, on the shown core" />
+                            </StackPanel>
+                            <Border Background="{DynamicResource Zf.EditorBackground}" BorderBrush="{DynamicResource Zf.Border}" BorderThickness="1">
+                                <!-- one editor per core, so each keeps its text, caret and undo -->
+                                <Grid>
+                                    <TextBox x:Name="EditorBox0" Style="{StaticResource Zf.Code}" Foreground="{DynamicResource Zf.EditorText}"
+                                             Text="{Binding Cores[0].Editor.Text, UpdateSourceTrigger=PropertyChanged}"
+                                             Visibility="{Binding Cores[0].IsSelected, Converter={StaticResource VisibleWhen}}"
+                                             AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                             PreviewKeyDown="EditorBox_PreviewKeyDown" />
+                                    <TextBox x:Name="EditorBox1" Style="{StaticResource Zf.Code}" Foreground="{DynamicResource Zf.EditorText}"
+                                             Text="{Binding Cores[1].Editor.Text, UpdateSourceTrigger=PropertyChanged}"
+                                             Visibility="{Binding Cores[1].IsSelected, Converter={StaticResource VisibleWhen}}"
+                                             AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                             PreviewKeyDown="EditorBox_PreviewKeyDown" />
+                                </Grid>
+                            </Border>
+                        </DockPanel>
+
+                        <!-- pattern -->
+                        <DockPanel Visibility="{Binding ShowPattern, Converter={StaticResource VisibleWhen}}">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Patterns.Title}" Style="{StaticResource Zf.Heading}" Margin="0,0,10,0" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="New" Command="{Binding Patterns.NewCommand}" />
+                                    <Button Content="Open…" Command="{Binding Patterns.OpenCommand}" />
+                                    <Button Content="Save" Command="{Binding Patterns.SaveCommand}" />
+                                    <Button Content="Save as…" Command="{Binding Patterns.SaveAsCommand}" Margin="0" />
+                                </StackPanel>
+                                <Border />
+                            </DockPanel>
+                            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,2">
+                                <Button Content="Insert" Command="{Binding Patterns.InsertCommand}" ToolTip="A step after the selection, like the step before it (Ins)" />
+                                <Button Content="Duplicate" Command="{Binding Patterns.DuplicateCommand}" ToolTip="Copy the selected steps after them (Ctrl+D)" />
+                                <Button Content="Delete" Command="{Binding Patterns.DeleteCommand}" ToolTip="Delete the selected steps (Del)" Margin="0,0,12,0" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBox Width="78" Text="{Binding Patterns.DurationText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                         ToolTip="Duration of the selected steps: 100 ns, 2.5 us, 1 ms, 0.5 s (5 ns steps); Enter sets it">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Return" Command="{Binding Patterns.ApplyDurationCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                                <Button Content="Set" Command="{Binding Patterns.ApplyDurationCommand}" Margin="4,0,12,0" />
+                                </StackPanel>
+                                <Button Content="Wait" Command="{Binding Patterns.WaitCommand}"
+                                        ToolTip="The selected steps wait for the trigger, then hold their levels for their duration (T in the header)" Margin="0,0,12,0" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="×" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBox Width="52" Text="{Binding Patterns.RepeatText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                         ToolTip="How often the selected steps play in all: 2 to 65535, or forever">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Return" Command="{Binding Patterns.RepeatCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                                <Button Content="Repeat" Command="{Binding Patterns.RepeatCommand}" Margin="4,0,4,0"
+                                        ToolTip="Repeat the selected steps; repeats nest up to four deep" />
+                                <Button Content="Unrepeat" Command="{Binding Patterns.UnrepeatCommand}" ToolTip="Remove the repeats within the selection" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <Button Content="Undo" Command="{Binding Patterns.UndoCommand}" ToolTip="Ctrl+Z" Margin="0,0,0,4" />
+                            </WrapPanel>
+                            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="At the end" Style="{StaticResource Zf.Dim}" Margin="0,0,6,0" />
+                                <ComboBox MinWidth="130" ItemsSource="{Binding Patterns.EndNames}" SelectedIndex="{Binding Patterns.EndIndex}" />
+                                <TextBlock Text="from step" Style="{StaticResource Zf.Dim}" Margin="8,0,6,0" />
+                                <TextBox Width="44" Text="{Binding Patterns.RestartText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                         IsEnabled="{Binding Patterns.Restarts}" Margin="0,0,16,0" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="Trigger" Style="{StaticResource Zf.Dim}" Margin="0,0,6,0" />
+                                <ComboBox MinWidth="130" ItemsSource="{Binding Patterns.TriggerSourceNames}" SelectedIndex="{Binding Patterns.TriggerIndex}"
+                                          ToolTip="What wait steps wait for: a shield pin, a button, or pg-trig only" />
+                                <ComboBox MinWidth="100" ItemsSource="{Binding Patterns.EdgeNames}" SelectedIndex="{Binding Patterns.EdgeIndex}" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </WrapPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding Patterns.Messages}" TextWrapping="Wrap" MaxHeight="64" Margin="0,0,0,4">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource Zf.Warning}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Patterns.HasErrors}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Zf.Error}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Patterns.Summary}" Style="{StaticResource Zf.Dim}" />
+                                    <WrapPanel>
+                                        <Button Content="Load &amp; start" Command="{Binding PatternLoadCommand}"
+                                                ToolTip="Send the pattern as Forth to the shown core and start it (both cores share the generator)" />
+                                        <Button Content="Start" Command="{Binding PatternStartCommand}" ToolTip="pg-start: play the loaded pattern from step 0" />
+                                        <Button Content="Stop" Command="{Binding PatternStopCommand}" ToolTip="pg-stop: the idle levels" />
+                                        <Button Content="To editor" Command="{Binding PatternToEditorCommand}"
+                                                ToolTip="The pattern as Forth in the shown core's source editor, e.g. to store it with autostart" />
+                                    </WrapPanel>
+                                </DockPanel>
+                            </StackPanel>
+                            <Border Background="{DynamicResource Zf.EditorBackground}" BorderBrush="{DynamicResource Zf.Border}" BorderThickness="1">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <!-- as high as the diagram's brackets and header, the label at its bottom -->
+                                            <Border Height="{Binding Patterns.ChannelsTop}">
+                                                <TextBlock Text="on" Style="{StaticResource Zf.Dim}" FontSize="10" Margin="5,0,0,4"
+                                                           VerticalAlignment="Bottom" ToolTip="Enabled: driven by the generator" />
+                                            </Border>
+                                            <ItemsControl ItemsSource="{Binding Patterns.Channels}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Height="20">
+                                                            <CheckBox IsChecked="{Binding Enabled}" Margin="4,0,2,0" ToolTip="Driven by the generator; otherwise the pin is not driven" />
+                                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="62" FontSize="11" Padding="1,0"
+                                                                     BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                                                     ToolTip="The channel's name (Pmod JA1-4, 7-10 = channels 0-7, JB = 8-15)" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                            <controls:PatternView Editor="{Binding Patterns}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                        </ScrollViewer>
+                                    </Grid>
+                                </ScrollViewer>
+                            </Border>
+                        </DockPanel>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
+
+            <!-- terminal -->
+            <Border Grid.Column="2" Style="{StaticResource Zf.PanelBox}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <TextBlock DockPanel.Dock="Left" Style="{StaticResource Zf.Heading}">
+                            <Run Text="Terminal · " /><Run Text="{Binding SelectedCore.Name, Mode=OneWay}" Foreground="{DynamicResource Zf.Accent}" />
+                        </TextBlock>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Clear" Click="ClearTerminal_Click" />
+                            <Button Content="Restart" Command="{Binding RestartCommand}"
+                                    ToolTip="Reload the shown core's kernel; its saved source runs if autostart is on. Stops a running word. The other core keeps running." />
+                            <Button Content="Restart clean" Command="{Binding RestartCommand}" CommandParameter="skip" Margin="0"
+                                    ToolTip="Reload the shown core's kernel without running its saved source" />
+                        </StackPanel>
+                        <Border />
+                    </DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCore.AbsentReason}" Style="{StaticResource Zf.Dim}" TextWrapping="Wrap"
+                               Margin="0,0,0,6" Visibility="{Binding SelectedCore.AbsentReason, Converter={StaticResource NonEmpty}}" />
+                    <Border Background="{DynamicResource Zf.TerminalBackground}" BorderBrush="{DynamicResource Zf.Border}" BorderThickness="1">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Bottom" Margin="0,2,0,2">
+                                <TextBlock DockPanel.Dock="Left" Text="&gt;" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           FontFamily="{DynamicResource Zf.CodeFont}" FontSize="{DynamicResource Zf.CodeSize}"
+                                           Foreground="{DynamicResource Zf.TerminalText}" Effect="{DynamicResource Zf.TextGlow}" />
+                                <TextBox x:Name="InputBox" Style="{StaticResource Zf.Code}" Foreground="{DynamicResource Zf.TerminalText}"
+                                         Text="{Binding SelectedCore.InputLine, UpdateSourceTrigger=PropertyChanged}"
+                                         PreviewKeyDown="InputBox_PreviewKeyDown" ToolTip="Enter sends the line to the shown core's Forth; Up/Down recall earlier lines" />
+                            </DockPanel>
+                            <Rectangle DockPanel.Dock="Bottom" Height="1" Fill="{DynamicResource Zf.Border}" />
+                            <Grid>
+                                <TextBox x:Name="TerminalBox0" Style="{StaticResource Zf.Code}" Foreground="{DynamicResource Zf.TerminalText}"
+                                         IsReadOnly="True" IsReadOnlyCaretVisible="False" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Visibility="{Binding Cores[0].IsSelected, Converter={StaticResource VisibleWhen}}" />
+                                <TextBox x:Name="TerminalBox1" Style="{StaticResource Zf.Code}" Foreground="{DynamicResource Zf.TerminalText}"
+                                         IsReadOnly="True" IsReadOnlyCaretVisible="False" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Visibility="{Binding Cores[1].IsSelected, Converter={StaticResource VisibleWhen}}" />
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
+
+            <!-- side: data stack, dictionary, saved source -->
+            <Grid Grid.Column="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Style="{StaticResource Zf.PanelBox}" Margin="0,0,0,6">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top">
+                            <Button DockPanel.Dock="Right" Content="↻" Command="{Binding RefreshStackCommand}" Margin="0"
+                                    ToolTip="Read the data and float stacks (as at the last prompt)" />
+                            <TextBlock Style="{StaticResource Zf.Heading}"><Run Text="Data stack · " /><Run Text="{Binding SelectedCore.Name, Mode=OneWay}" Foreground="{DynamicResource Zf.Accent}" /></TextBlock>
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCore.StackSummary}" Style="{StaticResource Zf.Dim}" Margin="0,0,0,4" />
+                        <ListBox DockPanel.Dock="Top" ItemsSource="{Binding SelectedCore.Stack}" Height="88" FontFamily="{DynamicResource Zf.CodeFont}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Position}" Foreground="{DynamicResource Zf.DimText}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Signed}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Hex}" Foreground="{DynamicResource Zf.DimText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,6,0,0">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding SelectedCore.FloatStackSummary}" Style="{StaticResource Zf.Dim}" />
+                            <TextBlock Text="Float stack" Style="{StaticResource Zf.Heading}" />
+                        </DockPanel>
+                        <ListBox ItemsSource="{Binding SelectedCore.FloatStack}" Height="56" Margin="0,4,0,0" FontFamily="{DynamicResource Zf.CodeFont}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Position}" Foreground="{DynamicResource Zf.DimText}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Value}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Hex}" Foreground="{DynamicResource Zf.DimText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource Zf.PanelBox}" Margin="0,0,0,6">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top">
+                            <Button DockPanel.Dock="Right" Content="↻" Command="{Binding RefreshWordsCommand}" Margin="0"
+                                    ToolTip="Read the dictionary again" />
+                            <TextBlock Style="{StaticResource Zf.Heading}"><Run Text="Dictionary · " /><Run Text="{Binding SelectedCore.Name, Mode=OneWay}" Foreground="{DynamicResource Zf.Accent}" /></TextBlock>
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCore.WordsSummary}" Style="{StaticResource Zf.Dim}" Margin="0,0,0,4" />
+                        <TextBox DockPanel.Dock="Top" Text="{Binding SelectedCore.WordFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"
+                                 ToolTip="Filter by name" />
+                        <ListBox x:Name="WordsList" ItemsSource="{Binding SelectedCore.Words}" FontFamily="{DynamicResource Zf.CodeFont}"
+                                 MouseDoubleClick="WordsList_MouseDoubleClick" ToolTip="Double-click puts the word into the terminal line">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="44" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Flags}" Foreground="{DynamicResource Zf.Accent}"
+                                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Grid.Column="2" Text="{Binding CodeAddress, StringFormat=${0:X5}}"
+                                                   Foreground="{DynamicResource Zf.DimText}" HorizontalAlignment="Right" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource Zf.PanelBox}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Zf.Heading}"><Run Text="Saved source · " /><Run Text="{Binding SelectedCore.Name, Mode=OneWay}" Foreground="{DynamicResource Zf.Accent}" /></TextBlock>
+                        <TextBlock Text="{Binding SelectedCore.SourceSummary}" Style="{StaticResource Zf.Dim}" Margin="0,0,0,6" />
+                        <CheckBox Content="Autostart: run it at every start" IsChecked="{Binding SelectedCore.SourceAutostart}"
+                                  IsEnabled="{Binding SelectedCore.SourceStored}" Margin="0,0,0,8"
+                                  ToolTip="Hold BTN3 during power-up or use Restart clean to skip it once" />
+                        <WrapPanel>
+                            <Button Content="Store editor" Command="{Binding StoreSourceCommand}" Margin="0,0,4,4"
+                                    ToolTip="Save the editor's text in the board's flash, as this core's source" />
+                            <Button Content="Load" Command="{Binding LoadSourceCommand}" Margin="0,0,4,4"
+                                    ToolTip="Put the saved source into the editor" />
+                            <Button Content="Erase" Command="{Binding EraseSourceCommand}" Margin="0,0,0,4" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- the board -->
+        <GridSplitter x:Name="BoardSplitter" Grid.Row="2" Height="6" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                      ResizeBehavior="PreviousAndNext" Visibility="{Binding ShowBoard, Converter={StaticResource VisibleWhen}}" />
+        <Border Grid.Row="3" Style="{StaticResource Zf.PanelBox}" Padding="4" MaxHeight="260"
+                Visibility="{Binding ShowBoard, Converter={StaticResource VisibleWhen}}">
+            <Viewbox Stretch="Uniform" StretchDirection="Both">
+                <controls:BoardView State="{Binding Board}" />
+            </Viewbox>
+        </Border>
+
+        <!-- status line -->
+        <DockPanel Grid.Row="4" Margin="2,8,2,0">
+            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Zf.Dim}">
+                <Run Text="{Binding Cores[0].Name, Mode=OneWay}" /><Run Text=": " /><Run Text="{Binding Cores[0].ForthState, Mode=OneWay}" />
+                <Run Text="  ·  " /><Run Text="{Binding Cores[1].Name, Mode=OneWay}" /><Run Text=": " /><Run Text="{Binding Cores[1].ForthState, Mode=OneWay}" />
+            </TextBlock>
+            <TextBlock DockPanel.Dock="Right" Margin="0,0,16,0" VerticalAlignment="Center"
+                       Text="{Binding Progress, StringFormat=sending {0:P0}}" Foreground="{DynamicResource Zf.Accent}"
+                       Visibility="{Binding Progress, Converter={StaticResource NonZero}}" />
+            <TextBlock x:Name="StatusLine" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource Zf.DimText}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource Zf.Error}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </DockPanel>
+    </Grid>
+</Window>

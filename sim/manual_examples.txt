@@ -1,0 +1,140 @@
+2 3 + .
+: square dup * ;
+7 square .
+1e 3e f/ f.
+5000000000 .
+1.5 f. -2e3 f. 1e f. .5e-2 f. 3. f. 1E10 f.
+1 2 3 rot .s
+2drop drop
+-7 2 / . -7 2 mod . -7 2 u/mod .s 2drop -8 2/ . -2147483648 abs dup . u.
+100000 100000 1000 */ . -5 s>d .s 2drop -1 1 u< .
+-8 2 arshift . -8 2 rshift . 1 32 lshift .
+variable x  5 x !  3 x +!  x ?
+create table 1 , 2 , 4 , 8 ,
+table 2 cells + ?
+create buf 8 allot  buf 8 32 fill  buf c@ . buf 7 + c@ .
+: hello ." Hello, Arty!" cr ;
+hello
+hex 255 . decimal 5 2 base ! . decimal -1 u.
+hex 1.5
+decimal
+5 led! led@ . 9 rgb! rgb@ .
+variable count
+10 constant ten
+create buffer 20 allot
+: bump 1 count +! ;
+bump bump count ? ten .
+: sq dup * ;
+: sq sq 1+ ;
+5 sq .
+: fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;
+7 fact .
+: evens 10 0 do i . 2 +loop ;
+evens
+: table 3 1 do 3 1 do j i * . loop loop ;
+table
+: find3 10 0 do i 3 = if ." found" unloop exit then loop ." none" ;
+find3
+: five [ 2 3 + ] literal ;
+five .
+' five execute .
+: shout ." loud" ; immediate
+: quiet shout ;
+here : half 0.5e f* ; here swap - . ' half @ hex u. decimal
+: count16 16 0 do i led! 250 ms loop 0 led! ;
+: mirror begin btn@ led! key? until key drop 0 led! ;
+: delay sw@ 1+ 100 * ms ;
+: runner begin 4 0 do 1 i lshift led! delay loop key? until key drop 0 led! ;
+: colours 8 1 do i dup 3 lshift or rgb! 400 ms loop 0 rgb! ;
+colours rgb@ .
+: wait-btn begin btn@ until ;
+: wait-free begin btn@ 0= until ;
+: react
+  ." wait for the LEDs..." cr
+  2000 ms 15 led! ms@
+  wait-btn ms@ swap - 0 led!
+  ." reaction time " . ." ms" cr
+  wait-free ;
+variable presses
+: btn0? btn@ 1 and ;
+: count-press 1 presses +! presses @ led! begin btn0? 0= until ;
+: counter
+  0 presses !
+  begin btn0? if count-press then key? until key drop
+  ." BTN0 pressed " presses ? ." times" cr ;
+.s
+3000 1000 4096 */ . -1 -1 um* .s 2drop
+5 0 20 within . 20 0 20 within .
+13 output  13 high
+13 pin@ .
+13 low  13 input
+2 pin@ .
+255 $100028 !
+170 $100024 !
+$100020 @ 255 and .
+0 $100028 !
+.temp
+0 mv@ .
+1 supply@ . 2 supply@ .
+ftemp@ f.
+0 volts@ f.
+100000 0 0 pwm-clocks 0 pwm @ . 0 pwm 4 + @ . 0 pwm-off
+100 ns .s 2drop 1000 us .s 2drop 21474 msec d>ticks u.
+14 output  14 high  10 ms  0 mv@ .
+14 low  10 ms  0 mv@ .  14 input
+: supplies 1 supply@ . 2 supply@ . 6 supply@ . 13 supply@ . 14 supply@ . ;
+supplies .temp
+: thermo begin .temp cr 1000 ms key? until key drop ;
+: blink13 13 output begin 13 toggle 250 ms key? until key drop 13 low ;
+: watch2 begin 2 pin@ 0= 1 and led! key? until key drop 0 led! ;
+0 output  0 high  1 pin@ .  0 low  1 pin@ .  0 input
+: volts begin 0 mv@ . ." mV" cr 500 ms key? until key drop ;
+: level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;
+: bar begin level led! 50 ms key? until key drop 0 led! ;
+bar
+x
+led@ .
+: all6 6 0 do i mv@ . loop ;
+: drive dup output dup high 50 ms all6 input ;
+14 drive
+1e 2.5 3. f.s fdrop fdrop fdrop
+-2.7e ftrunc f. -2.5e floor f. 2.5e fround f. 3.5e fround f.
+1e 2e f< . 2e 1e f> . 1e 1e f= . 0e 0e f/ fdup f= . -1e f0< . 0e f0= .
+-3.99e f>s . 3e9 f>s . -1 u>f f. 4e9 f>u u. 123 s>d d>f f. 1e15 f>d .s 2drop
+1e f>bits hex u. decimal $40490FDB bits>f f.
+create rb 9 allot  pi rb 7 represent . . . rb 7 type
+fvariable speed  2.5e speed f!  speed f@ f.
+9.81e fconstant g  g 2e f* f.
+: rt2 [ 2e fsqrt ] fliteral ;  rt2 f.
+create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f.
+1e 3e f/ f.
+2e fsqrt fs.
+12345e fe.
+123456789e f.
+1e10 f.
+-0.00025e f.
+1e 0e f/ f.
+9 set-precision 0.1e f.
+7 set-precision 0.1e f.
+3.75e f. 2e f. 3.4e38 f. -1e 0e f/ f. 0e 0e f/ f. 1e 3e f/ fs.
+pi f. -1e -1e fatan2 f. 2e 10e f** f. 1e-5 flnp1 fs. 1e6 fsin f.
+1e-30 fdup f* f. 1e30 fdup f* f. 1e10 hex f. decimal
+0.1e 0.2e f+ f. 9 set-precision 0.1e 0.2e f+ f. 7 set-precision
+: deg ( F: degrees -- radians ) pi f* 180e f/ ;
+30e deg fsin f.
+1e fatan 180e f* pi f/ f.
+variable fn  fvariable x0  fvariable h
+: x(i) ( i -- ) ( F: -- x ) s>f h f@ f* x0 f@ f+ ;
+: f(i) ( i -- ) ( F: -- y ) x(i) fn @ execute ;
+: weight ( i -- ) ( F: -- w ) 1 and if 4e else 2e then ;
+: simpson ( xt n -- ) ( F: a b -- r )
+  >r fn !  fover f- r@ s>f f/ h f! x0 f!
+  0 f(i) r@ f(i) f+
+  r@ 1 do i f(i) i weight f* f+ loop
+  r> drop h f@ f* 3e f/ ;
+0e pi ' fsin 100 simpson f.
+: gauss ( F: x -- y ) fdup f* fnegate fexp ;
+0e 3e ' gauss 100 simpson f.
+: avg-volts ( ch -- ) ( F: -- v ) 0e 100 0 do dup volts@ f+ loop drop 100e f/ ;
+: voltmeter begin 0 avg-volts f. ." V" cr 500 ms key? until key drop ;
+.s f.s

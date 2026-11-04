@@ -1,0 +1,8 @@
+5 pin@ . 14 pin@ . 13 output 13 high 13 pin@ . 13 low 13 pin@ .
+13 toggle 13 pin@ . $100024 @ . $100028 @ . 41 output 41 high $100040 @ .
+13 input 13 pin@ . 22 pin@
+9 adc@
+: wait 2000 0 do loop ;  wait wait wait wait wait
+.temp 0 mv@ . 1 mv@ . 6 mv@ . 2 mv@ .
+1 supply@ . 2 supply@ . 15 supply@ .
+1000 3000 4096 */ . -1000 3000 4096 */ . -1 -1 um* .s 2drop

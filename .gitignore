@@ -1,0 +1,17 @@
+# Vivado / Vitis outputs
+build/
+.Xil/
+NA/
+clockInfo.txt
+*.jou
+*.log
+*.str
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+dist/
+__pycache__/

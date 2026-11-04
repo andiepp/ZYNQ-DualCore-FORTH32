@@ -1,0 +1,56 @@
+{
+  "format": "zynq-forth pattern 1",
+  "channelNames": [
+    "CLK",
+    "FRAME",
+    "CH2",
+    "CH3",
+    "CH4",
+    "CH5",
+    "CH6",
+    "CH7",
+    "CH8",
+    "CH9",
+    "CH10",
+    "CH11",
+    "CH12",
+    "CH13",
+    "CH14",
+    "CH15"
+  ],
+  "steps": [
+    {
+      "levels": 0,
+      "ticks": 200,
+      "wait": true
+    },
+    {
+      "levels": 3,
+      "ticks": 100,
+      "wait": false
+    },
+    {
+      "levels": 2,
+      "ticks": 100,
+      "wait": false
+    },
+    {
+      "levels": 0,
+      "ticks": 400,
+      "wait": false
+    }
+  ],
+  "repeats": [
+    {
+      "first": 1,
+      "last": 2,
+      "count": 8
+    }
+  ],
+  "enabled": 3,
+  "idle": 0,
+  "triggerSource": 48,
+  "triggerEdge": "rising",
+  "end": "restart",
+  "restartAt": 0
+}

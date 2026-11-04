@@ -1,0 +1,18 @@
+1.5e 2.25e f+ f. 1e 3e f/ f. 2e fsqrt f. 0.1e 0.2e f+ f.
+-2.5 f. 1e10 f. 1.5e-3 f. 123456789e f. 3.4e38 f. 1e-20 f.
+1e 0e f/ f. -1e 0e f/ f. 0e 0e f/ f. 1e 3e f/ fs. 12345e fe.
+pi f. pi 2e f/ fsin f. pi fcos f. 1e fatan 4e f* f.
+1e fexp f. 2e fln f. 100e flog f. 2e 10e f** f. -2e 3e f** f.
+0.5e fasin f. 0.5e facos f. -1e -1e fatan2 f. 0.5e ftan f.
+7 s>f f. 3.99e f>s . -3.99e f>s . -3.5e floor f. 2.5e fround f.
+3.5e fround f. -2.7e ftrunc f.
+1e 2e 3e f.s frot f.s fdrop fdrop fdrop
+: circle ( F: r -- area ) fdup f* pi f* ; 2e circle f.
+fvariable x 4.5e x f! x f@ f. 2.5e fconstant half half f.
+1e 2e f< . 2e 1e f< . 1e 1e f= . -1e f0< . 0e f0= .
+5 set-precision pi f. precision . 7 set-precision fdepth .
+100000 100000 * . -1 -1 um* .s 2drop 1000000 1000 * 3 / .
+123 s>d d>f f. 1e15 f>d .s 2drop
+3 volts@ f. ftemp@ f. 1e30 fdup f* f.
+: fsum 0e 100 0 do i s>f f+ loop ; fsum f.
+fdrop

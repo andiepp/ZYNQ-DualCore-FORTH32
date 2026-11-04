@@ -1,0 +1,5 @@
+97 0 0 pwm-clocks 250 0 pwm-duty 3 0 pwm-pin
+0 pwm 12 + @ u. 0 pwm @ .
+: wait 300 0 do loop ;
+wait 500 0 pwm-duty wait
+0 pwm-off 3 pin@ .

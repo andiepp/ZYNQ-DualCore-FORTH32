@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 330" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#23476b"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#23476b;stroke-width:1.2}
+      .pp{fill:#fff4e0;stroke:#b36b00;stroke-width:1.2}
+      .od{fill:#f3f8ef;stroke:#3d7a2a;stroke-width:1.2}
+      .g{fill:#eef3f9;stroke:#1f5f99;stroke-width:1.2}
+      .t{font-weight:600;font-size:12px}
+      .s{font-size:11px;fill:#333}
+      .f{font-family:Consolas,monospace;font-size:11px}
+      .ln{stroke:#23476b;stroke-width:1.3;fill:none}
+    </style>
+  </defs>
+  <rect width="820" height="330" fill="#fff"/>
+
+  <rect class="g" x="20" y="20" width="200" height="66" rx="4"/>
+  <text class="t" x="120" y="40" text-anchor="middle">GPIO (Forth: output, high …)</text>
+  <text class="f" x="120" y="58" text-anchor="middle">pin_out[47:0] latch</text>
+  <text class="f" x="120" y="74" text-anchor="middle">pin_dir[47:0] 1 = output</text>
+
+  <rect class="pp" x="20" y="100" width="200" height="120" rx="4"/>
+  <text class="t" x="120" y="120" text-anchor="middle">11 push-pull outputs</text>
+  <text class="s" x="120" y="138" text-anchor="middle">PWM 0..3 · UART 0/1 TX</text>
+  <text class="s" x="120" y="154" text-anchor="middle">SPI 0/1 SCK and MOSI · DDS</text>
+  <text class="s" x="120" y="176" text-anchor="middle">each: enable, value,</text>
+  <text class="s" x="120" y="192" text-anchor="middle">6-bit pin number</text>
+
+  <rect class="od" x="20" y="234" width="200" height="76" rx="4"/>
+  <text class="t" x="120" y="254" text-anchor="middle">2 open-drain outputs</text>
+  <text class="s" x="120" y="272" text-anchor="middle">I²C SCL, SDA: "pull low"</text>
+  <text class="s" x="120" y="288" text-anchor="middle">or released (board pull-up)</text>
+
+  <rect class="box" x="270" y="40" width="300" height="250" rx="4"/>
+  <text class="t" x="420" y="62" text-anchor="middle">pin router (forth_system.v), per pin p</text>
+  <text class="f" x="284" y="90">pp_owns[p]  = any enabled pp output names p</text>
+  <text class="f" x="284" y="108">pp_value[p] = OR of their values</text>
+  <text class="f" x="284" y="126">od_owns[p]  = I²C enabled and SCL/SDA = p</text>
+  <text class="f" x="284" y="144">od_low[p]   = OR of their "pull low"</text>
+  <text class="f" x="284" y="166">owned = pp_owns | od_owns</text>
+  <text class="f" x="284" y="190">drive = ((dir &amp; ~owned)</text>
+  <text class="f" x="284" y="206">        | pp_owns | od_low) &amp; exists</text>
+  <text class="f" x="284" y="230">level = (out &amp; ~owned)</text>
+  <text class="f" x="284" y="246">        | (pp_value &amp; pp_owns)</text>
+  <text class="f" x="284" y="272">pad = drive ? level : Z</text>
+
+  <path class="ln" d="M220,53 L268,80" marker-end="url(#a)"/>
+  <path class="ln" d="M220,160 L268,160" marker-end="url(#a)"/>
+  <path class="ln" d="M220,272 L268,240" marker-end="url(#a)"/>
+
+  <rect class="box" x="620" y="40" width="180" height="120" rx="4"/>
+  <text class="t" x="710" y="62" text-anchor="middle">48 pads (42 exist)</text>
+  <text class="s" x="710" y="82" text-anchor="middle">0..13 IO0–IO13</text>
+  <text class="s" x="710" y="98" text-anchor="middle">14..19 A0–A5</text>
+  <text class="s" x="710" y="114" text-anchor="middle">26..41 IO26–IO41</text>
+  <text class="s" x="710" y="130" text-anchor="middle">42..47 SCL SDA MISO</text>
+  <text class="s" x="710" y="146" text-anchor="middle">MOSI SCK SS</text>
+  <path class="ln" d="M570,100 L618,100" marker-end="url(#a)"/>
+
+  <rect class="g" x="620" y="190" width="180" height="100" rx="4"/>
+  <text class="t" x="710" y="210" text-anchor="middle">two-flop synchronizer</text>
+  <text class="f" x="710" y="228" text-anchor="middle">pin_sync[47:0]</text>
+  <text class="s" x="710" y="248" text-anchor="middle">→ port level registers</text>
+  <text class="s" x="710" y="264" text-anchor="middle">→ UART RX, SPI MISO, I²C</text>
+  <text class="s" x="710" y="280" text-anchor="middle">(selected by pin number)</text>
+  <path class="ln" d="M710,160 L710,188" marker-end="url(#a)"/>
+</svg>

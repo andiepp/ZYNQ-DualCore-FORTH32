@@ -1,0 +1,110 @@
+{
+  "format": "zynq-forth pattern 1",
+  "channelNames": [
+    "BIT0",
+    "BIT1",
+    "BIT2",
+    "BIT3",
+    "CH4",
+    "CH5",
+    "CH6",
+    "CH7",
+    "CH8",
+    "CH9",
+    "CH10",
+    "CH11",
+    "CH12",
+    "CH13",
+    "CH14",
+    "CH15"
+  ],
+  "steps": [
+    {
+      "levels": 0,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 1,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 2,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 3,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 4,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 5,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 6,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 7,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 8,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 9,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 10,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 11,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 12,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 13,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 14,
+      "ticks": 200,
+      "wait": false
+    },
+    {
+      "levels": 15,
+      "ticks": 200,
+      "wait": false
+    }
+  ],
+  "repeats": [],
+  "enabled": 15,
+  "idle": 0,
+  "triggerSource": 63,
+  "triggerEdge": "rising",
+  "end": "restart",
+  "restartAt": 0
+}

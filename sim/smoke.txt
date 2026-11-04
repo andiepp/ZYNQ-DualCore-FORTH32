@@ -1,0 +1,26 @@
+2 3 + .
+-7 2 /mod .s
+hex 255 . decimal
+1 2 3 .s
+: sq dup * ;
+12 sq .
+: cnt 5 0 do i . loop ;
+cnt
+foo
+: hi ." hello" cr ;
+hi
+: up 0 begin dup . 1+ dup 4 = until drop ;
+up
+: sign 0< if ." neg" else ." pos" then ;
+-5 sign 5 sign
+variable v 42 v ! v ?
+100 constant c c .
+3 led! led@ .
+-32768 . 32767 . 1000 7 / . 1000 7 mod .
+: nest 2 0 do 3 0 do j 10 * i + . loop loop ;
+nest
+\ comment
+( comment ) 7 .
+' sq execute
+.( paren text)
+drop

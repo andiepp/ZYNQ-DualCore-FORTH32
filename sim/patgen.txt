@@ -1,0 +1,7 @@
+pg-stop $FFFF pg-enable 0 pg-idle 0 pg-at
+1 15 ns pg-step 0 10 ns 0 0 pg-loop
+pg-start pg-status . pg-pc .
+: wait 300 0 do loop ; wait
+pg-status . 1 pg-end
+pg-status . pg-stop pg-status .
+1 us . . 3 msec . . 7 ns . . $1001A8 @ .

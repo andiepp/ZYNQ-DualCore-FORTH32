@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 470" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#23476b"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#23476b;stroke-width:1.2}
+      .reg{fill:#fff4e0;stroke:#b36b00;stroke-width:1.4}
+      .ram{fill:#eef3f9;stroke:#1f5f99;stroke-width:1.4}
+      .fpu{fill:#f3f8ef;stroke:#3d7a2a;stroke-width:1.4}
+      .t{font-weight:600;font-size:13px}
+      .s{font-size:11px;fill:#333}
+      .ln{stroke:#23476b;stroke-width:1.3;fill:none}
+      .dl{stroke:#b36b00;stroke-width:1.3;fill:none;stroke-dasharray:4 3}
+    </style>
+  </defs>
+  <rect width="820" height="470" fill="#fff"/>
+
+  <!-- code side -->
+  <rect class="ram" x="20" y="30" width="150" height="70" rx="4"/>
+  <text class="t" x="95" y="52" text-anchor="middle">RAM port A</text>
+  <text class="s" x="95" y="68" text-anchor="middle">32K × 32, registered</text>
+  <text class="s" x="95" y="84" text-anchor="middle">output = insn</text>
+  <rect class="reg" x="20" y="150" width="150" height="44" rx="4"/>
+  <text class="t" x="95" y="170" text-anchor="middle">PC (15 bits)</text>
+  <text class="s" x="95" y="186" text-anchor="middle">cell address</text>
+  <rect class="box" x="20" y="240" width="150" height="80" rx="4"/>
+  <text class="t" x="95" y="260" text-anchor="middle">next PC</text>
+  <text class="s" x="95" y="277" text-anchor="middle">PC+1 · insn[14:0]</text>
+  <text class="s" x="95" y="292" text-anchor="middle">R &gt;&gt; 2 (return)</text>
+  <text class="s" x="95" y="307" text-anchor="middle">PC while held</text>
+  <path class="ln" d="M95,240 L95,196" marker-end="url(#a)"/>
+  <path class="ln" d="M20,280 L8,280 L8,65 L18,65" marker-end="url(#a)"/>
+  <text class="s" x="12" y="130" transform="rotate(-90 12 130)" text-anchor="middle">code_addr</text>
+
+  <!-- decoder -->
+  <rect class="box" x="210" y="30" width="170" height="70" rx="4"/>
+  <text class="t" x="295" y="52" text-anchor="middle">decode</text>
+  <text class="s" x="295" y="68" text-anchor="middle">literal · jump · 0branch</text>
+  <text class="s" x="295" y="84" text-anchor="middle">call · ALU fields</text>
+  <path class="ln" d="M170,65 L208,65" marker-end="url(#a)"/>
+  <path class="ln" d="M295,100 L295,118 L190,118 L190,280 L172,280" marker-end="url(#a)"/>
+
+  <!-- data stack -->
+  <rect class="reg" x="230" y="150" width="90" height="44" rx="4"/>
+  <text class="t" x="275" y="170" text-anchor="middle">T</text>
+  <text class="s" x="275" y="186" text-anchor="middle">top of stack</text>
+  <rect class="box" x="230" y="210" width="90" height="56" rx="4"/>
+  <text class="t" x="275" y="230" text-anchor="middle">N = dstack</text>
+  <text class="s" x="275" y="246" text-anchor="middle">32 × 32 LUT RAM</text>
+  <text class="s" x="275" y="260" text-anchor="middle">pointer dsp</text>
+  <rect class="box" x="230" y="282" width="90" height="56" rx="4"/>
+  <text class="t" x="275" y="302" text-anchor="middle">R = rstack</text>
+  <text class="s" x="275" y="318" text-anchor="middle">32 × 32 LUT RAM</text>
+  <text class="s" x="275" y="332" text-anchor="middle">pointer rsp</text>
+
+  <!-- ALU -->
+  <rect class="box" x="360" y="150" width="120" height="188" rx="4"/>
+  <text class="t" x="420" y="172" text-anchor="middle">ALU (op)</text>
+  <text class="s" x="420" y="192" text-anchor="middle">33 functions of</text>
+  <text class="s" x="420" y="207" text-anchor="middle">T, N, R, [T], FT, FN,</text>
+  <text class="s" x="420" y="222" text-anchor="middle">depths</text>
+  <text class="s" x="420" y="246" text-anchor="middle">+ − and or xor not</text>
+  <text class="s" x="420" y="261" text-anchor="middle">compares, shifts</text>
+  <text class="s" x="420" y="276" text-anchor="middle">float compares</text>
+  <text class="s" x="420" y="291" text-anchor="middle">result of the MCU</text>
+  <text class="s" x="420" y="318" text-anchor="middle">→ new T</text>
+  <path class="ln" d="M320,172 L358,172" marker-end="url(#a)"/>
+  <path class="ln" d="M320,238 L358,238" marker-end="url(#a)"/>
+  <path class="ln" d="M320,310 L358,310" marker-end="url(#a)"/>
+  <path class="ln" d="M420,150 L420,130 L275,130 L275,148" marker-end="url(#a)"/>
+
+  <!-- float stack -->
+  <rect class="reg" x="530" y="150" width="90" height="44" rx="4"/>
+  <text class="t" x="575" y="170" text-anchor="middle">FT</text>
+  <text class="s" x="575" y="186" text-anchor="middle">top float</text>
+  <rect class="box" x="530" y="210" width="90" height="56" rx="4"/>
+  <text class="t" x="575" y="230" text-anchor="middle">FN = fstack</text>
+  <text class="s" x="575" y="246" text-anchor="middle">32 × 32 LUT RAM</text>
+  <text class="s" x="575" y="260" text-anchor="middle">pointer fsp</text>
+  <rect class="box" x="660" y="150" width="140" height="116" rx="4"/>
+  <text class="t" x="730" y="172" text-anchor="middle">FALU (fop)</text>
+  <text class="s" x="730" y="192" text-anchor="middle">FT, FN, T's bits, [T]</text>
+  <text class="s" x="730" y="207" text-anchor="middle">−FT, |FT|</text>
+  <text class="s" x="730" y="222" text-anchor="middle">result of the MCU</text>
+  <text class="s" x="730" y="250" text-anchor="middle">→ new FT</text>
+  <path class="ln" d="M620,172 L658,172" marker-end="url(#a)"/>
+  <path class="ln" d="M620,238 L658,238" marker-end="url(#a)"/>
+  <path class="ln" d="M730,150 L730,130 L575,130 L575,148" marker-end="url(#a)"/>
+
+  <!-- MCU -->
+  <rect class="fpu" x="500" y="300" width="300" height="70" rx="4"/>
+  <text class="t" x="650" y="320" text-anchor="middle">multi-cycle unit (hf32_mcu.v)</text>
+  <text class="s" x="650" y="337" text-anchor="middle">operands N,T or FN,FT · start / valid / consume</text>
+  <text class="s" x="650" y="353" text-anchor="middle">* (um*) 3 · f+ f− 6 · f* 5 · f/ fsqrt 31 · s&gt;f 4 · f&gt;s ftrunc 2</text>
+  <path class="ln" d="M500,330 L482,330" marker-end="url(#a)"/>
+  <path class="ln" d="M730,300 L730,268" marker-end="url(#a)"/>
+  <path class="dl" d="M500,362 L200,362 L200,172 L172,172" marker-end="url(#a)"/>
+  <text class="s" x="206" y="356" fill="#b36b00">wait → hold</text>
+
+  <!-- data RAM -->
+  <rect class="ram" x="20" y="390" width="440" height="66" rx="4"/>
+  <text class="t" x="240" y="410" text-anchor="middle">RAM port B / I/O registers</text>
+  <text class="s" x="240" y="427" text-anchor="middle">address = next T (so [T] is ready in the next instruction); in a store cycle T itself</text>
+  <text class="s" x="240" y="443" text-anchor="middle">write data = N (! c!) or FT (f!) · read data → ALU op 13/14, FALU fop 3</text>
+  <path class="ln" d="M275,194 L275,204 L340,204 L340,388" marker-end="url(#a)"/>
+  <text class="s" x="336" y="384" text-anchor="end">mem_addr</text>
+  <path class="ln" d="M460,420 L490,420 L490,282 L482,282" marker-end="url(#a)"/>
+  <path class="ln" d="M490,420 L640,420 L640,270" marker-end="url(#a)"/>
+  <text class="s" x="560" y="414">mem_rdata</text>
+</svg>

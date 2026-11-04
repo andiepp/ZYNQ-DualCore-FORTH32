@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>ZynqForth</RootNamespace>
+    <AssemblyName>ZynqDualForth32</AssemblyName>
+    <AssemblyTitle>ZYNQ-DualCore-FORTH32</AssemblyTitle>
+    <Description>ZYNQ-DualCore-FORTH32: terminals, editors, dictionaries, stacks and board view for the two HF32 Forth cores (32-bit, floating point) on the Arty Z7-20.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZynqForth.Core\ZynqForth.Core.csproj" />
+  </ItemGroup>
+
+  <!-- the user manual, opened by the Manual button (tools/manual_pdf.py builds it) -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\docs\Manual.pdf" LogicalName="ZynqForth.Manual.pdf" />
+  </ItemGroup>
+
+</Project>

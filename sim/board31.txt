@@ -1,0 +1,19 @@
+115200 26 29 0 uart-open 115200 28 27 1 uart-open
+: ut ( src dst -- errors ) 0 256 0 do >r over i swap uart-emit
+  dup uart-key i <> r> swap if 1+ then loop nip nip ;
+0 1 ut . 1 0 ut . 0 uart-status . 1 uart-status .
+1000000 26 29 0 uart-open 1000000 28 27 1 uart-open 0 1 ut . 1 0 ut .
+0 uart-close 1 uart-close
+pin-sck pin-mosi pin-miso 0 spi-open 12500000 0 spi-hz
+: sm ( s -- ) 4 0 do i over spi-mode $A5 over spi-xfer hex . decimal loop drop ;
+0 sm 32 0 spi-bits $12345678 0 spi-xfer hex . decimal
+-1 0 spi-lsb $C0FFEE11 0 spi-xfer hex . decimal 0 spi-close
+pin-sck pin-mosi pin-miso 1 spi-open 16 1 spi-bits
+$BEEF 1 spi-xfer hex . decimal 1 spi-close
+variable t variable e variable lv
+: edges ( ms -- n ) ms@ + t ! 0 e ! 31 pin@ lv !
+  begin t @ ms@ - 0> while
+  31 pin@ dup lv @ <> over and if 1 e +! then lv ! repeat e @ ;
+1000e dds-hz 30 dds-pin 100 edges . 10000e dds-hz 100 edges .
+33333e dds-hz 100 edges . dds-off 100 edges .
+1000 0 pwm-hz 500 0 pwm-duty 30 0 pwm-pin 100 edges . 0 pwm-off

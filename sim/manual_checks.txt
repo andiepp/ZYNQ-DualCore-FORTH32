@@ -1,0 +1,24 @@
+here .
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 .s
+dup .s
+.s
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 .s words
+2drop 2drop 2drop 2drop 2drop 2drop 2drop 2drop 2drop 2drop .s
+: deep 30 0 do i loop ;
+deep
+.s
+: ff 0 do i s>f loop ;
+20 ff fdepth .
+1e
+f.s
+fdrop
+1 2 3e 4e f.s .s nonsense
+f.s .s
+5 set-precision pi f. abort
+pi f. 7 set-precision pi f.
+21476 msec d>ticks
+0 0 pwm-hz
+9 adc@
+4 pwm
+50 pin
+here .

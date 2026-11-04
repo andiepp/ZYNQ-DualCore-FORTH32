@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ZynqForth.Core/ZynqForth.Core.csproj" />
+    <Project Path="src/ZynqForth/ZynqForth.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ZynqForth.Core.Tests/ZynqForth.Core.Tests.csproj" />
+  </Folder>
+</Solution>

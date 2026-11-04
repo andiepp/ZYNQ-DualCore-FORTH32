@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 560" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#23476b"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#23476b;stroke-width:1.2}
+      .ps{fill:#eef3f9;stroke:#1f5f99;stroke-width:1.6}
+      .pl{fill:#f3f8ef;stroke:#3d7a2a;stroke-width:1.6}
+      .cpu{fill:#fff4e0;stroke:#b36b00;stroke-width:1.4}
+      .t{font-weight:600;font-size:13px}
+      .s{font-size:11px;fill:#333}
+      .h{font-weight:700;font-size:14px}
+      .ln{stroke:#23476b;stroke-width:1.3;fill:none}
+      .mono{font-family:Consolas,monospace;font-size:11px}
+    </style>
+  </defs>
+  <rect width="820" height="560" fill="#fff"/>
+
+  <!-- PC -->
+  <rect class="box" x="10" y="40" width="130" height="120" rx="6"/>
+  <text class="t" x="75" y="62" text-anchor="middle">Windows PC</text>
+  <text class="s" x="75" y="84" text-anchor="middle">ZynqForth32 app</text>
+  <text class="s" x="75" y="100" text-anchor="middle">or a terminal program</text>
+  <text class="s" x="75" y="116" text-anchor="middle">or the HASE host</text>
+  <text class="s" x="75" y="142" text-anchor="middle">115200 Bd, 8N1</text>
+  <path class="ln" d="M140,100 L182,100" marker-end="url(#a)" marker-start="url(#a)"/>
+  <text class="s" x="161" y="92" text-anchor="middle">USB</text>
+
+  <!-- PS -->
+  <rect class="ps" x="185" y="20" width="200" height="520" rx="8"/>
+  <text class="h" x="285" y="42" text-anchor="middle" fill="#1f5f99">PS: processing system</text>
+  <rect class="box" x="200" y="60" width="170" height="36" rx="4"/>
+  <text class="t" x="285" y="83" text-anchor="middle">UART0 (FTDI channel B)</text>
+  <rect class="box" x="200" y="110" width="170" height="190" rx="4"/>
+  <text class="t" x="285" y="130" text-anchor="middle">Cortex-A9 core 0</text>
+  <text class="s" x="285" y="146" text-anchor="middle">bare metal, sw/src/main.c</text>
+  <text class="s" x="212" y="170">• kernel loader + verify</text>
+  <text class="s" x="212" y="187">• byte pump UART ↔ FIFOs</text>
+  <text class="s" x="212" y="204">• 64 KB input ring</text>
+  <text class="s" x="212" y="221">• 4 KB output ring</text>
+  <text class="s" x="212" y="238">• service requests (SOH)</text>
+  <text class="s" x="212" y="255">• HASE MCNF node</text>
+  <text class="s" x="212" y="272">• saved source, autostart</text>
+  <text class="s" x="212" y="289">• dictionary / stack reads</text>
+  <path class="ln" d="M285,96 L285,108" marker-end="url(#a)" marker-start="url(#a)"/>
+  <rect class="box" x="200" y="314" width="170" height="54" rx="4"/>
+  <text class="t" x="285" y="334" text-anchor="middle">QSPI flash (16 MB)</text>
+  <text class="s" x="285" y="351" text-anchor="middle">BOOT.bin at 0, saved source</text>
+  <text class="s" x="285" y="364" text-anchor="middle">at 0xFE0000 (magic HF32)</text>
+  <rect class="box" x="200" y="380" width="170" height="40" rx="4"/>
+  <text class="t" x="285" y="397" text-anchor="middle">DDR3 (512 MB)</text>
+  <text class="s" x="285" y="412" text-anchor="middle">ARM program, rings</text>
+  <rect class="box" x="200" y="432" width="170" height="52" rx="4"/>
+  <text class="t" x="285" y="450" text-anchor="middle">Fabric clocks</text>
+  <text class="s" x="285" y="466" text-anchor="middle">FCLK0 50 MHz (CPU, AXI)</text>
+  <text class="s" x="285" y="479" text-anchor="middle">FCLK1 200 MHz (patgen, DDS)</text>
+  <rect class="box" x="200" y="494" width="170" height="36" rx="4"/>
+  <text class="t" x="285" y="510" text-anchor="middle">M_AXI_GP0</text>
+  <text class="s" x="285" y="524" text-anchor="middle">0x43C00000, 4 KB</text>
+
+  <!-- AXI link -->
+  <path class="ln" d="M370,512 L398,512 L398,92 L418,92" marker-end="url(#a)"/>
+  <text class="s" x="404" y="300" transform="rotate(-90 404 300)" text-anchor="middle">AXI-Lite</text>
+
+  <!-- PL -->
+  <rect class="pl" x="415" y="20" width="250" height="520" rx="8"/>
+  <text class="h" x="540" y="42" text-anchor="middle" fill="#3d7a2a">PL: forth_system.v</text>
+  <rect class="box" x="425" y="56" width="230" height="56" rx="4"/>
+  <text class="t" x="540" y="74" text-anchor="middle">AXI-Lite slave, 15 registers</text>
+  <text class="s" x="540" y="90" text-anchor="middle">loader · hold/pause · RX/TX bridge</text>
+  <text class="s" x="540" y="104" text-anchor="middle">board state · XADC · patgen · pin functions</text>
+  <rect class="cpu" x="425" y="124" width="230" height="72" rx="4"/>
+  <text class="t" x="540" y="143" text-anchor="middle">HF32 CPU (hf32_cpu.v)</text>
+  <text class="s" x="540" y="159" text-anchor="middle">32-bit cells, data/return/float stacks</text>
+  <text class="s" x="540" y="174" text-anchor="middle">+ multi-cycle unit (hf32_mcu.v):</text>
+  <text class="s" x="540" y="188" text-anchor="middle">32×32 multiply, IEEE single FPU</text>
+  <rect class="box" x="425" y="206" width="230" height="40" rx="4"/>
+  <text class="t" x="540" y="223" text-anchor="middle">128 KB RAM (32 block RAMs)</text>
+  <text class="s" x="540" y="238" text-anchor="middle">port A: code · port B: data or loader</text>
+  <rect class="box" x="425" y="256" width="230" height="274" rx="4"/>
+  <text class="t" x="540" y="274" text-anchor="middle">I/O registers from $100000</text>
+  <text class="s" x="437" y="296">• RX/TX FIFOs (32 bytes each)</text>
+  <text class="s" x="437" y="313">• LEDs, RGB, buttons, switches</text>
+  <text class="s" x="437" y="330">• ms and µs timers</text>
+  <text class="s" x="437" y="347">• 42 shield pins in 3 ports + pin router</text>
+  <text class="s" x="437" y="364">• PWM × 4 (pwm.v)</text>
+  <text class="s" x="437" y="381">• UART × 2 (uart.v)</text>
+  <text class="s" x="437" y="398">• SPI master × 2 (spi.v)</text>
+  <text class="s" x="437" y="415">• I²C master (i2c.v)</text>
+  <text class="s" x="437" y="432">• DDS, 200 MHz (dds.v)</text>
+  <text class="s" x="437" y="449">• tone generator (tone.v)</text>
+  <text class="s" x="437" y="466">• XADC scanner (xadc_scan.v)</text>
+  <text class="s" x="437" y="483">• pattern generator, 200 MHz</text>
+  <text class="s" x="449" y="497">(patgen.v)</text>
+  <path class="ln" d="M540,112 L540,122" marker-end="url(#a)" marker-start="url(#a)"/>
+  <path class="ln" d="M540,196 L540,204" marker-end="url(#a)" marker-start="url(#a)"/>
+  <path class="ln" d="M540,246 L540,254" marker-end="url(#a)" marker-start="url(#a)"/>
+
+  <!-- Board -->
+  <rect class="box" x="690" y="40" width="120" height="460" rx="6"/>
+  <text class="t" x="750" y="62" text-anchor="middle">Arty Z7-20</text>
+  <text class="s" x="750" y="96" text-anchor="middle">LD0–LD3, LD4/LD5</text>
+  <text class="s" x="750" y="112" text-anchor="middle">BTN0–3, SW0–1</text>
+  <text class="s" x="750" y="152" text-anchor="middle">shield IO0–IO13,</text>
+  <text class="s" x="750" y="168" text-anchor="middle">IO26–IO41, A0–A5</text>
+  <text class="s" x="750" y="184" text-anchor="middle">SCL, SDA</text>
+  <text class="s" x="750" y="210" text-anchor="middle">SPI header</text>
+  <text class="s" x="750" y="226" text-anchor="middle">MISO MOSI SCK SS</text>
+  <text class="s" x="750" y="266" text-anchor="middle">analog A0–A11</text>
+  <text class="s" x="750" y="306" text-anchor="middle">audio jack</text>
+  <text class="s" x="750" y="322" text-anchor="middle">(low-pass, amp)</text>
+  <text class="s" x="750" y="362" text-anchor="middle">Pmod JA, JB</text>
+  <text class="s" x="750" y="378" text-anchor="middle">(16 channels)</text>
+  <text class="s" x="750" y="430" text-anchor="middle">JP4: JTAG / QSPI</text>
+  <text class="s" x="750" y="446" text-anchor="middle">boot mode</text>
+  <path class="ln" d="M655,330 L688,330" marker-end="url(#a)" marker-start="url(#a)"/>
+  <path class="ln" d="M655,470 L672,470 L672,370 L688,370" marker-end="url(#a)"/>
+  <path class="ln" d="M655,449 L680,449 L680,310 L688,310" marker-end="url(#a)"/>
+</svg>

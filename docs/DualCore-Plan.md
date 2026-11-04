@@ -109,9 +109,10 @@ word from core 0 to core 1 and back, `status`/`stack`/`words`/`restart` per core
 refused, core 1's output held with `mux off` and delivered behind its marker after `mux on`,
 core 0 keeps running through a restart of core 1. The app (protocol 3) connects, shows both
 cores with their own terminal, stacks and dictionary (and its buttons are enabled right after
-connecting now; they had waited for the first mouse or key input). Not checked yet: the saved
-source of core 1 (`store … 1`, flash sector 0xFD0000), the HASE node with firmware 4.0, the
-peripherals from both cores at once on the board.
+connecting now; they had waited for the first mouse or key input). Core 1's saved source
+(flash sector 0xFD0000): `store … on 1`, read back, fed on `restart 1` (its words ran on core
+1), skipped on `restart skip 1`, core 0's sector untouched, erased again. Not checked yet: the
+HASE node with firmware 4.0, the peripherals from both cores at once on the board.
 
 ## Step 3 onwards: notes
 

@@ -3,6 +3,17 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
+## 4.0.1 — unreleased
+
+- **I²C bus recovery:** `i2c-open` (and `i2c-open-pins`) first gives SCL 9 clocks with SDA
+  released and makes a stop, so a slave left in the middle of a read (a stop, restart or
+  reset before its byte ended) no longer blocks the bus. Found in the wired test of 4.0:
+  the first scans after the flash boot did not find the Si5351 at `$60`; reproduced on
+  purpose and fixed, checked on the board. New internal words `(i2c-free) (i2c-line)
+  (i2c-wait) (i2c-scl) (i2c-sda)`.
+- **Wired test on the board:** `board31.txt` on both cores, UART traffic between the cores,
+  SPI on core 1 during PWM on core 0, I²C from both cores (design.md 8.4).
+
 ## 4.0 — 2026-11-04
 
 - **App for two cores** (`ZynqDualForth32.exe`, settings in `%LocalAppData%\ZYNQ-DualCore-FORTH32`):

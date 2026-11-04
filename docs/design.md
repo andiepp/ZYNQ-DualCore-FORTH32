@@ -1472,7 +1472,12 @@ Each peripheral's words are thin layers over its registers:
   `spi-xfer ( out s -- in )` writes the data, waits while busy and reads the answer;
   `spi-write` and `spi-read` move byte strings.
 - **I²C:** `(i2c)` writes a command, waits while busy and aborts with `i2c timeout` on a stuck
-  bus. `i2c-open ( hz -- )` uses SCL/SDA (pins 42/43) and sets the quarter period
+  bus. `i2c-open-pins` first frees a bus that a slave still holds: a slave stopped in the
+  middle of a read keeps driving its bits on SDA. With the master disabled and the pins as
+  GPIO in open drain (pull low = latch 0 and output, release = input), it gives SCL 9 clocks
+  with SDA released, so the slave finishes its byte and reads a NACK, then makes a stop.
+  Clocking only until SDA reads high is not enough: a 1 bit of the byte leaves SDA high
+  with the slave still in the middle of it. `i2c-open ( hz -- )` uses SCL/SDA (pins 42/43) and sets the quarter period
   (⌈12,500,000 / hz⌉ + 2 clocks, never faster than asked). On top: `i2c-start i2c-stop
   i2c-write i2c-read`, `i2c-addr` (start + address byte), `i2c! ( b reg addr -- )` and
   `i2c@ ( reg addr -- b )` for register-based devices (write the register number, repeated
@@ -1558,7 +1563,17 @@ serial interfaces, the DDS and the PWM can be checked from Forth through loopbac
   transcript, line by line, on `smoke`, `divide`, `float` and `manual_checks` (the divider's
   board test); mailboxes, locks and the shared RAM between the cores; PWM on core 0 and the
   DDS on core 1 at once, refusals across cores, and a restart of one core while the other
-  runs; core 1's saved source; the HASE node with firmware 4.0.
+  runs; core 1's saved source; the HASE node with firmware 4.0. With the 3.1 jumper wires
+  (IO26–IO27, IO28–IO29, IO30–IO31, MOSI–MISO): `board31.txt` gives the simulator's
+  transcript on each core (UART 0 ↔ 1 at 115,200 Bd and 1 MBd, SPI in all modes), the DDS and
+  PWM edge counts on IO31 are right on each core (100, 990, 3,309–3,331, 0 and 100 in 100 ms),
+  100 bytes go from core 0's UART 0 to core 1's UART 1 and back (sum 4,950 each way),
+  core 1's SPI 1 loopback passes 1,000 transfers while core 0's PWM runs, and `i2c-scan`
+  finds the Si5351 at `$60` from either core. The first two scans after the flash boot
+  found nothing: a slave left in the middle of a read keeps driving SDA, and then no start
+  works. Reproduced on purpose (set the Si5351's register pointer to 0, start a read and
+  stop): SDA stays low and `$60 i2c-probe` fails. Since then `i2c-open` frees the bus first
+  (section 7.12), and the probe and the scan succeed after every such stuck read.
 
 So every layer is checked against the one above it: IEEE → FPU model → FPU RTL; simulator →
 system RTL (same output for the same session, on one core or both) → board (same output

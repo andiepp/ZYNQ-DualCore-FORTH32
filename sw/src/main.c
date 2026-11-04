@@ -55,7 +55,7 @@
 #include "mcnf_node.h"
 
 #define FIRMWARE_NAME       "zynq-dual-forth32"
-#define FIRMWARE_VERSION    "4.0"
+#define FIRMWARE_VERSION    "4.0.1"
 #define FIRMWARE_MAJOR      4               /* as the HASE node reports it (function 0x15) */
 #define FIRMWARE_MINOR      0
 #define PROTOCOL_VERSION    3               /* 3: two cores; 2: 32-bit cells and the float stack */

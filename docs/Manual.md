@@ -1524,7 +1524,7 @@ FPGA's own pull-ups are far too weak for I2C. Addresses are 7-bit.
 
 | Word | Stack | Description |
 |---|---|---|
-| `i2c-open` | `( hz -- )` | Open the I2C master on SCL and SDA: `100000 i2c-open`. |
+| `i2c-open` | `( hz -- )` | Open the I2C master on SCL and SDA: `100000 i2c-open`. First it frees the bus: 9 clocks on SCL and a stop, in case a slave was left in the middle of a read and still holds SDA (about 0.2 ms). |
 | `i2c-open-pins` | `( hz scl sda -- )` | The same on other pins. |
 | `i2c-close` | `( -- )` | Close it and free its pins. |
 | `i2c@` | `( reg addr -- b )` | Read register reg of the device at addr: start, address+W, reg, repeated start, address+R, one byte, stop. ` no ack` if the device does not answer. |
@@ -1844,6 +1844,10 @@ These words are visible in `words` and can be used, but they mainly exist for th
 | `(unit)` | `( u -- )` | Take peripheral u for this core; ` in use by the other core` if the other core has it. |
 | `unit-free` | `( u -- )` | Let peripheral u go. |
 | `(i2c)` | `( cmd -- status )` | Give the I2C master a command and wait until it is done; ` i2c timeout` when a slave held SCL low too long. |
+| `(i2c-free)` | `( -- )` | The bus recovery of `i2c-open-pins`: 9 clocks on SCL with SDA released, then a stop, with the pins as GPIO before the master takes them. |
+| `(i2c-line)` | `( f pin -- )` | Release (true) or pull low (false) an I2C line as GPIO, then wait 10 µs. |
+| `(i2c-wait)` | `( -- )` | Wait 10 µs. |
+| `(i2c-scl)`, `(i2c-sda)` | `( -- a )` | The pins `i2c-open-pins` was given. |
 | `(ack?)` | `( f -- )` | ` no ack` (after a stop) if f is false. |
 | `dds-sync` | `( -- )` | Wait until the DDS took over the last change (it runs on its own clock). |
 

@@ -285,11 +285,24 @@ variable cid
 : (i2c) ( cmd -- status )
   $100260 ! begin $100260 @ dup 0< while drop repeat
   dup $200 and if ."  i2c timeout" cr abort then ;
+\ Bus recovery before the master takes the pins: a slave left in the middle of a
+\ read (a stop or reset before the byte ended) keeps driving its bits on SDA, and
+\ then no start works. With the pins as GPIO, open drain (low = latch 0 and output,
+\ released = input): 9 clocks on SCL with SDA released, so the slave finishes its
+\ byte and sees a NACK, then a stop. Not "until SDA is high": a 1 bit of the byte
+\ also leaves SDA high, with the slave still in the middle of it.
+variable (i2c-scl)   variable (i2c-sda)
+: (i2c-wait) ( -- ) us@ 10 + begin dup us@ - 0< until drop ;
+: (i2c-line) ( f pin -- ) swap if input else dup low output then (i2c-wait) ;
+: (i2c-free) ( -- )
+  9 0 do 0 (i2c-scl) @ (i2c-line) -1 (i2c-scl) @ (i2c-line) loop
+  0 (i2c-scl) @ (i2c-line) 0 (i2c-sda) @ (i2c-line)
+  -1 (i2c-scl) @ (i2c-line) -1 (i2c-sda) @ (i2c-line) ;
 : i2c-open-pins ( hz scl sda -- )
-  9 (unit) 9 release 9 (free) swap 9 (free) swap
+  9 (unit) 0 $100268 ! 9 release 9 (free) swap 9 (free) swap 2dup (i2c-sda) ! (i2c-scl) !
   9 (claim) 8 lshift swap 9 (claim) or $8000 or >r
   dup 0= if ."  bad frequency" cr abort then
-  12500000 swap u/mod swap if 1+ then 2 + $100264 ! r> $100268 ! ;
+  12500000 swap u/mod swap if 1+ then 2 + $100264 ! (i2c-free) r> $100268 ! ;
 : i2c-open ( hz -- ) pin-scl pin-sda i2c-open-pins ;
 : i2c-close ( -- ) 9 (unit) 0 $100268 ! 9 release 9 unit-free ;
 : i2c-start ( -- ) $100 (i2c) drop ;

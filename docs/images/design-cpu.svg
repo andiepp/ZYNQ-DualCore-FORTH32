@@ -91,8 +91,8 @@
   <!-- MCU -->
   <rect class="fpu" x="500" y="300" width="300" height="70" rx="4"/>
   <text class="t" x="650" y="320" text-anchor="middle">multi-cycle unit (hf32_mcu.v)</text>
-  <text class="s" x="650" y="337" text-anchor="middle">operands N,T or FN,FT · start / valid / consume</text>
-  <text class="s" x="650" y="353" text-anchor="middle">* (um*) 3 · f+ f− 6 · f* 5 · f/ fsqrt 31 · s&gt;f 4 · f&gt;s ftrunc 2</text>
+  <text class="s" x="650" y="337" text-anchor="middle">operands N,T (divide: NN:N, T) or FN,FT · start / valid / consume</text>
+  <text class="s" x="650" y="353" text-anchor="middle">* (um*) 3 · um/mod 17 · f+ f− 6 · f* 5 · f/ fsqrt 31 · s&gt;f 4 · f&gt;s 2</text>
   <path class="ln" d="M500,330 L482,330" marker-end="url(#a)"/>
   <path class="ln" d="M730,300 L730,268" marker-end="url(#a)"/>
   <path class="dl" d="M500,362 L200,362 L200,172 L172,172" marker-end="url(#a)"/>

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 450" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 590" font-family="Segoe UI, Arial, sans-serif" font-size="12">
   <defs>
     <style>
       .a{font-family:Consolas,monospace;font-size:11px;fill:#23476b}
@@ -10,10 +10,11 @@
       .m{fill:#f4f4f4;stroke:#999;stroke-width:1;stroke-dasharray:4 3}
       .io{fill:#f3f8ef;stroke:#3d7a2a;stroke-width:1.2}
       .n{fill:#e3f0dc;stroke:#3d7a2a;stroke-width:1.2}
+      .d{fill:#fbeef6;stroke:#9b3b78;stroke-width:1.2}
     </style>
   </defs>
-  <rect width="820" height="450" fill="#fff"/>
-  <text class="h" x="200" y="22" text-anchor="middle">Byte addresses</text>
+  <rect width="820" height="590" fill="#fff"/>
+  <text class="h" x="200" y="22" text-anchor="middle">Byte addresses, as each core sees them</text>
   <text class="h" x="610" y="22" text-anchor="middle">I/O registers (register k at $100000 + 4k)</text>
 
   <!-- left column -->
@@ -22,14 +23,15 @@
   <text class="a" x="112" y="52" text-anchor="end">00000</text>
   <rect class="k" x="120" y="68" width="200" height="92"/>
   <text class="t" x="220" y="100" text-anchor="middle">kernel: headers, code, data</text>
-  <text class="s" x="220" y="118" text-anchor="middle">24,044 bytes, 414 words</text>
-  <text class="s" x="220" y="134" text-anchor="middle">(tib, ssnap, fssnap, pin-owner …)</text>
+  <text class="s" x="220" y="118" text-anchor="middle">24,876 bytes, 430 words</text>
+  <text class="s" x="220" y="134" text-anchor="middle">(tib, ssnap, fssnap …)</text>
   <text class="a" x="112" y="80" text-anchor="end">00004</text>
   <rect class="u" x="120" y="160" width="200" height="110"/>
-  <text class="t" x="220" y="200" text-anchor="middle">your words and data</text>
-  <text class="s" x="220" y="218" text-anchor="middle">HERE grows upward</text>
-  <text class="s" x="220" y="234" text-anchor="middle">107 KB free</text>
-  <text class="a" x="112" y="172" text-anchor="end">05DEC</text>
+  <text class="t" x="220" y="196" text-anchor="middle">your words and data</text>
+  <text class="s" x="220" y="214" text-anchor="middle">HERE grows upward</text>
+  <text class="s" x="220" y="230" text-anchor="middle">104 KB free</text>
+  <text class="s" x="220" y="250" text-anchor="middle">each core its own 128 KB</text>
+  <text class="a" x="112" y="172" text-anchor="end">0612C</text>
   <text class="a" x="112" y="268" text-anchor="end">1FFFF</text>
   <rect class="m" x="120" y="270" width="200" height="60"/>
   <text class="s" x="220" y="298" text-anchor="middle">the RAM again every 128 KB</text>
@@ -37,29 +39,44 @@
   <text class="a" x="112" y="282" text-anchor="end">20000</text>
   <text class="a" x="112" y="328" text-anchor="end">FFFFF</text>
   <rect class="io" x="120" y="330" width="200" height="56"/>
-  <text class="t" x="220" y="354" text-anchor="middle">I/O registers</text>
-  <text class="s" x="220" y="372" text-anchor="middle">address bit 20 set</text>
+  <text class="t" x="220" y="352" text-anchor="middle">I/O registers</text>
+  <text class="s" x="220" y="370" text-anchor="middle">address bit 20 set</text>
   <text class="a" x="112" y="342" text-anchor="end">100000</text>
   <rect class="m" x="120" y="386" width="200" height="40"/>
-  <text class="s" x="220" y="410" text-anchor="middle">repeats every 1 KB</text>
+  <text class="s" x="220" y="410" text-anchor="middle">repeat every 1 KB</text>
   <text class="a" x="112" y="398" text-anchor="end">100400</text>
-  <path d="M320,330 L420,40 M320,386 L420,430" stroke="#3d7a2a" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
+  <rect class="d" x="120" y="426" width="200" height="56"/>
+  <text class="t" x="220" y="448" text-anchor="middle">shared RAM, 4 KB</text>
+  <text class="s" x="220" y="466" text-anchor="middle">the same for both cores</text>
+  <text class="a" x="112" y="438" text-anchor="end">101000</text>
+  <text class="a" x="112" y="480" text-anchor="end">101FFF</text>
+  <path d="M320,330 L420,40 M320,426 L420,548" stroke="#3d7a2a" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
+
+  <!-- legend -->
+  <rect class="d" x="120" y="512" width="16" height="12"/>
+  <text class="s" x="142" y="522">new in 4.0 (two cores)</text>
+  <rect class="n" x="120" y="532" width="16" height="12"/>
+  <text class="s" x="142" y="542">new in 3.1 (registers 128 and up)</text>
 
   <!-- right column -->
   <g>
     <rect class="io" x="420" y="40" width="380" height="26"/><text class="a" x="428" y="57">100000</text><text class="s" x="490" y="57">terminal RX/TX, status, LEDs, buttons, RGB, ms, µs</text>
-    <rect class="io" x="420" y="66" width="380" height="26"/><text class="a" x="428" y="83">100020</text><text class="s" x="490" y="83">3 pin ports × (levels, latch, direction)</text>
-    <rect class="io" x="420" y="92" width="380" height="26"/><text class="a" x="428" y="109">100080</text><text class="s" x="490" y="109">32 XADC status registers</text>
-    <rect class="io" x="420" y="118" width="380" height="26"/><text class="a" x="428" y="135">100100</text><text class="s" x="490" y="135">PWM channels 0..3 (period lo/hi, duty, control)</text>
-    <rect class="io" x="420" y="144" width="380" height="26"/><text class="a" x="428" y="161">100180</text><text class="s" x="490" y="161">pattern generator registers 0..10</text>
-    <text class="s" x="610" y="186" text-anchor="middle" fill="#3d7a2a">— registers 128 and up: new in 3.1 —</text>
-    <rect class="n" x="420" y="194" width="380" height="26"/><text class="a" x="428" y="211">100200</text><text class="s" x="490" y="211">UART 0 (data, status, divider, pins)</text>
-    <rect class="n" x="420" y="220" width="380" height="26"/><text class="a" x="428" y="237">100210</text><text class="s" x="490" y="237">UART 1</text>
-    <rect class="n" x="420" y="246" width="380" height="26"/><text class="a" x="428" y="263">100220</text><text class="s" x="490" y="263">SPI 0 (data, status, control, half, pins)</text>
-    <rect class="n" x="420" y="272" width="380" height="26"/><text class="a" x="428" y="289">100240</text><text class="s" x="490" y="289">SPI 1</text>
-    <rect class="n" x="420" y="298" width="380" height="26"/><text class="a" x="428" y="315">100260</text><text class="s" x="490" y="315">I²C (command/status, quarter period, pins)</text>
-    <rect class="n" x="420" y="324" width="380" height="26"/><text class="a" x="428" y="341">100280</text><text class="s" x="490" y="341">DDS (tuning word, control)</text>
-    <rect class="n" x="420" y="350" width="380" height="26"/><text class="a" x="428" y="367">1002A0</text><text class="s" x="490" y="367">tone (tuning, control, volume, status)</text>
-    <rect class="m" x="420" y="376" width="380" height="54"/><text class="s" x="610" y="408" text-anchor="middle">unused: reads 0, writes ignored</text>
+    <rect class="d" x="420" y="66" width="380" height="26"/><text class="a" x="428" y="83">10001C</text><text class="s" x="490" y="83">the core number (0 or 1)</text>
+    <rect class="io" x="420" y="92" width="380" height="26"/><text class="a" x="428" y="109">100020</text><text class="s" x="490" y="109">3 pin ports × (levels, latch, direction)</text>
+    <rect class="d" x="420" y="118" width="380" height="26"/><text class="a" x="428" y="135">100050</text><text class="s" x="490" y="135">mailbox: data, status (this core's view)</text>
+    <rect class="d" x="420" y="144" width="380" height="26"/><text class="a" x="428" y="161">100060</text><text class="s" x="490" y="161">locks 0..7</text>
+    <rect class="io" x="420" y="170" width="380" height="26"/><text class="a" x="428" y="187">100080</text><text class="s" x="490" y="187">32 XADC status registers</text>
+    <rect class="io" x="420" y="196" width="380" height="26"/><text class="a" x="428" y="213">100100</text><text class="s" x="490" y="213">PWM channels 0..3 (period lo/hi, duty, control)</text>
+    <rect class="d" x="420" y="222" width="380" height="26"/><text class="a" x="428" y="239">100140</text><text class="s" x="490" y="239">pin ports: set, clear, toggle (no read-modify-write)</text>
+    <rect class="io" x="420" y="248" width="380" height="26"/><text class="a" x="428" y="265">100180</text><text class="s" x="490" y="265">pattern generator registers 0..10</text>
+    <rect class="n" x="420" y="274" width="380" height="26"/><text class="a" x="428" y="291">100200</text><text class="s" x="490" y="291">UART 0 (data, status, divider, pins), UART 1</text>
+    <rect class="n" x="420" y="300" width="380" height="26"/><text class="a" x="428" y="317">100220</text><text class="s" x="490" y="317">SPI 0 (data, status, control, half, pins), SPI 1</text>
+    <rect class="n" x="420" y="326" width="380" height="26"/><text class="a" x="428" y="343">100260</text><text class="s" x="490" y="343">I²C (command/status, quarter period, pins)</text>
+    <rect class="n" x="420" y="352" width="380" height="26"/><text class="a" x="428" y="369">100280</text><text class="s" x="490" y="369">DDS (tuning word, control)</text>
+    <rect class="n" x="420" y="378" width="380" height="26"/><text class="a" x="428" y="395">1002A0</text><text class="s" x="490" y="395">tone (tuning, control, volume, status)</text>
+    <rect class="d" x="420" y="404" width="380" height="26"/><text class="a" x="428" y="421">100300</text><text class="s" x="490" y="421">pin owners 0..47 (id; 16 + id: the other core's)</text>
+    <rect class="d" x="420" y="430" width="380" height="26"/><text class="a" x="428" y="447">1003C0</text><text class="s" x="490" y="447">peripheral owners (PWM, UART, SPI, I²C, DDS, tone, pg)</text>
+    <rect class="m" x="420" y="456" width="380" height="40"/><text class="s" x="610" y="480" text-anchor="middle">unused: reads 0, writes ignored</text>
+    <rect class="d" x="420" y="508" width="380" height="40"/><text class="a" x="428" y="532">101000</text><text class="s" x="490" y="532">shared RAM, 1K cells, words and bytes</text>
   </g>
 </svg>

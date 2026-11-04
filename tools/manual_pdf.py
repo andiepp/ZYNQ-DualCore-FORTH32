@@ -28,12 +28,12 @@ def release_version():
 # source, PDF, footer and cover text, table of contents
 DOCS = {
     'manual': dict(src='Manual.md', pdf='Manual.pdf', label='User Manual', toc=False,
-                   sub='User Manual &mdash; a 32-bit Forth CPU with floating point on the '
+                   sub='User Manual &mdash; two 32-bit Forth CPUs with floating point on the '
                        'Digilent Arty Z7-20'),
     'design': dict(src='design.md', pdf='Implementation-Details.pdf',
                    label='Implementation Details', toc=True,
-                   sub='Implementation Details &mdash; the HF32 CPU, its FPU and peripherals, '
-                       'the ARM side and the Forth kernel'),
+                   sub='Implementation Details &mdash; the two HF32 cores, their FPUs and '
+                       'the shared peripherals, the ARM side and the Forth kernel'),
 }
 
 EDGE_PATHS = [

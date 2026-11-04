@@ -25,7 +25,7 @@ divider** and a **second HF32 core**. The version line is 4.x.
 | 3 | Second HF32 + its own unit and RAM in `forth_system`; per-core I/O decode, mailboxes, shared RAM window, pin ownership per core | |
 | 4 | ARM firmware 4.0: two kernel loads, per-core input rings, `input`/`mux`/core markers, core-addressed requests, second source sector | done 2026-11-04 (on the board over JTAG; not flashed) |
 | 5 | Kernel words for two cores (`core#`, `send`, `receive`, `mail?`, locks); manual | done 2026-11-04 (on the board over JTAG) |
-| 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | released 2026-11-04 (v4.0); flashing on the owner's go |
+| 6 | Board tests (both cores, divider, peripherals shared), timing, release 4.0 | released and flashed 2026-11-04 (v4.0) |
 | later | HASE: the node shows core 0 as today; core 1 in the HASE panel needs its own HASE-Lab ADR | |
 
 ## Step 2: hardware divider (done)

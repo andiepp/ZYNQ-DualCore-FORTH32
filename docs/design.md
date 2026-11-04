@@ -1,24 +1,33 @@
 # ZYNQ-DualCore-FORTH32 — Implementation Details
 
-This document describes how ZYNQ-DualCore-FORTH32 is built: the HF32 CPU and its
-floating-point unit in the FPGA, the memory and the peripherals around it, the program on the
-ARM core, the Forth kernel that runs on HF32, and the tools that build and check all of it.
+This document describes how ZYNQ-DualCore-FORTH32 is built: the two HF32 cores with their
+floating-point units and dividers in the FPGA, the memory, the shared I/O bus and the
+peripherals around them, the program on the ARM core, the Forth kernel that runs on each core,
+and the tools that build and check all of it.
 It is written for someone who wants to understand, change or extend the design. How to *use*
 the Forth is in the [user manual](Manual.md), the serial protocol in [Protocol.md](Protocol.md)
 and the pattern generator's internals in [PatternGenerator.md](PatternGenerator.md).
 
-All figures in this document are those of release 3.1 (firmware 3.1, protocol 2). The PDF
-version, `docs/Implementation-Details.pdf`, is generated from this file by `python tools/manual_pdf.py design`.
+All figures in this document are those of release 4.0 (firmware 4.0, protocol 3), unless a
+section names an earlier release for comparison. The PDF version,
+`docs/Implementation-Details.pdf`, is generated from this file by `python tools/manual_pdf.py design`.
 
 ## 1 Overview
 
-ZYNQ-DualCore-FORTH32 turns a Digilent Arty Z7-20 into an interactive Forth computer. The Forth
-does not run on the board's ARM processor: it runs on **HF32**, a 32-bit stack processor
-built in the programmable logic of the Zynq, whose instructions are Forth primitives. Everything
-that makes Forth Forth runs on HF32: reading the input line, looking words up, compiling new
-definitions, executing them, printing numbers and floats. The ARM core is the CPU's service
-processor: it loads the kernel, carries the terminal between the USB serial port and HF32, and
-answers the app's and the HASE laboratory's requests on the side.
+ZYNQ-DualCore-FORTH32 turns a Digilent Arty Z7-20 into an interactive computer with **two
+Forths**. They do not run on the board's ARM processor: each runs on its own **HF32**, a 32-bit
+stack processor built in the programmable logic of the Zynq, whose instructions are Forth
+primitives. Everything that makes Forth Forth runs on HF32: reading the input line, looking
+words up, compiling new definitions, executing them, printing numbers and floats.
+
+The two cores, **core 0** and **core 1**, are independent: each has its own 128 KB of RAM, its
+own copy of the kernel, its own dictionary, stacks, terminal and saved source, and neither can
+reach the other's memory. They share the board's I/O through one I/O bus with a register
+stage, and work together through a mailbox in each direction, eight locks and 4 KB of shared
+RAM; every pin and peripheral belongs to the core that opened it (section 5.2). The ARM core is
+the service processor of both: it loads the kernels, carries both terminals between the USB
+serial port and the cores, and answers the app's and the HASE laboratory's requests on the
+side.
 
 ![System overview](images/design-system.svg)
 
@@ -27,8 +36,12 @@ answers the app's and the HASE laboratory's requests on the side.
 - **A real Forth CPU.** Compiled Forth is native HF32 machine code: a colon definition is a
   sequence of 32-bit instructions, primitives are inlined as single instructions, calls and
   returns cost no extra clock. There is no inner interpreter.
-- **Hardware floating point.** IEEE 754 single precision with its own float stack, as in
-  Forth-2012: `f+ f- f*` take 5–6 clocks, `f/` and `fsqrt` 31.
+- **Two independent Forths.** Two full systems on one board rather than a main core and a
+  helper: either core can be restarted, loaded with a source or left looping while the other
+  goes on, and a program written for one core runs on the other.
+- **Hardware floating point and division.** IEEE 754 single precision with its own float
+  stack, as in Forth-2012: `f+ f- f*` take 5–6 clocks, `f/` and `fsqrt` 31; a 64 / 32
+  divider for `um/mod` and `u/mod` in 17.
 - **Correct results.** Every FPU operation rounds to nearest even; decimal input and output
   are correctly rounded; the elementary functions are accurate to within about two units in
   the last place.
@@ -40,61 +53,66 @@ answers the app's and the HASE laboratory's requests on the side.
   drives the Pmods.
 - **Standalone and HASE-compatible in one firmware.** The same boot image talks to a terminal
   program, to the Windows app and to a HASE host, and switches by itself.
-- **Small and checkable.** About 15 % of the Zynq-7020's logic. Every layer has an executable
-  model that the layer below is checked against: the FPU bit for bit, the CPU instruction for
-  instruction, the kernel against Python's arithmetic.
+- **Small and checkable.** About 25 % of the Zynq-7020's logic for both cores. Every layer has
+  an executable model that the layer below is checked against: the FPU and the divider bit for
+  bit, each CPU instruction for instruction, both cores together against the simulator's
+  two-core run, the kernel against Python's arithmetic.
 
 ### 1.2 Who does what
 
-| | FPGA: HF32 running `forth/kernel.fs` | ARM Cortex-A9: `sw/src/main.c` (bare metal) |
+| | FPGA: each HF32 core running `forth/kernel.fs` | ARM Cortex-A9: `sw/src/main.c` (bare metal) |
 |---|---|---|
-| Start-up | `cold` prints the banner, sets base and precision, enters `quit` | Loads the 6,011-cell kernel image into HF32's RAM over AXI, reads it back to verify it, releases the CPU from reset |
-| Terminal | Reads keys from the RX FIFO, echoes, prints into the TX FIFO | Moves UART bytes into the RX FIFO and the TX FIFO into the UART, through a 64 KB input ring and a 4 KB output ring |
+| Start-up | `cold` prints the banner, sets base and precision, enters `quit` | Loads the 6,219-cell kernel image into each core's RAM over AXI, reads it back to verify it, releases the core from reset |
+| Terminal | Reads keys from its RX FIFO, echoes, prints into its TX FIFO | Moves UART bytes into the RX FIFO of the core the input points at, and each core's TX FIFO into the UART, through a 64 KB input ring and a 4 KB output ring per core; marks which core's output is which (protocol 3) |
 | Interpreting and compiling | All of it: parsing, dictionary search, numbers, floats, compiling, executing | Nothing |
 | Arithmetic | Integer ALU, multiplier and divider, FPU (hardware); decimal conversion and elementary functions (Forth) | Nothing |
-| Board I/O | LEDs, pins, PWM, serial interfaces, DDS, tone, XADC, pattern generator, all as I/O registers at `$100000` | Only reads their state for the app's board view, without disturbing the CPU |
-| Service requests (`words`, `stack`, `board`, `source` …) | Nothing; Forth does not notice them | Answers them itself; for the dictionary and the stacks it pauses HF32 for a few microseconds and reads its RAM |
-| Saved source | Compiles it as if it were typed | Keeps it in QSPI flash and feeds it into Forth's input at every start (autostart) |
-| HASE | Nothing | The whole MCNF node: framing, device functions, the automatic switch between terminal and HASE |
+| Board I/O | LEDs, pins, PWM, serial interfaces, DDS, tone, XADC, pattern generator, all as I/O registers at `$100000`, shared by both cores; the core that opens a pin or peripheral owns it | Only reads their state for the app's board view, without disturbing the cores |
+| Working together | Mailboxes, locks and the shared RAM, used by the kernel's `send receive lock unlock shared` | Nothing; it only reports how many cells wait in each mailbox |
+| Service requests (`words`, `stack`, `board`, `source` …) | Nothing; Forth does not notice them | Answers them itself, for the core a request names; for the dictionary and the stacks it pauses that core for a few microseconds and reads its RAM |
+| Saved source | Compiles it as if it were typed | Keeps one per core in QSPI flash and feeds it into that core's input at every start (autostart) |
+| HASE | Nothing | The whole MCNF node, about core 0: framing, device functions, the automatic switch between terminal and HASE |
 
 The PC tool `tools/hf32.py` comes in only at build time: it cross-compiles `kernel.fs` into the
 image that the ARM loads. Everything typed later is compiled by that image, on the FPGA.
 
 ### 1.3 The life of a line
 
-What happens when `2 3 + .` and Enter are typed in the app:
+What happens when `2 3 + .` and Enter are typed in the app, with core 0 shown:
 
 1. The app writes the bytes to the board's USB serial port. The FTDI chip passes them to
    the Zynq's PS UART0.
 2. The ARM program's main loop reads each byte from the UART. It is not SOH (a service
-   request) and not a byte `0xA_` (an MCNF frame), so it goes into the 64 KB input ring.
-3. Whenever the PL's RX FIFO is not full, the loop moves bytes from the ring into it through
+   request) and not a byte `0xA_` (an MCNF frame), so it goes into the 64 KB input ring of the
+   core the input points at, core 0 (the app sent `input 0` when it switched to it).
+3. Whenever core 0's RX FIFO is not full, the loop moves bytes from the ring into it through
    the AXI register `RX_PUSH`.
-4. HF32 is waiting in `key`, polling the I/O status register `$100004`. It reads the byte
-   from `$100000` (which pops the FIFO), and `accept-line` echoes it with `emit`: a store
-   to `$100000` pushes it into the TX FIFO.
-5. The ARM loop pops the TX FIFO through `TX_POP` into its output ring, and the ring drains
-   into the UART: the echo appears in the app.
+4. Core 0 is waiting in `key`, polling the I/O status register `$100004` over the I/O bus. It
+   reads the byte from `$100000` (which pops its FIFO), and `accept-line` echoes it with
+   `emit`: a store to `$100000` pushes it into its TX FIFO. Core 1 meanwhile runs whatever it
+   runs; it only shares the I/O bus, which serves one request per clock.
+5. The ARM loop pops core 0's TX FIFO through `TX_POP` into core 0's output ring, and the
+   ring drains into the UART (after a core marker if core 1 printed last): the echo appears
+   in core 0's terminal in the app.
 6. At the CR, `accept-line` returns. `interpret` takes `2`: not in the dictionary, a number,
    pushed. `3` likewise. `+` is found and executed (in interpret state, the inline primitive's
    code is called). `.` prints `5 `. Then `quit` prints ` ok` and CR LF, takes a snapshot of
    the stacks for the app, and waits for the next line.
-7. Meanwhile the app asks for the stack (`SOH stack LF`). The ARM pauses HF32 for a few
-   microseconds, reads the snapshot from HF32's RAM, resumes it and answers; the answer is
-   placed between two bytes of Forth's output.
+7. Meanwhile the app asks for the stack (`SOH stack LF`, `stack 1` for core 1). The ARM pauses
+   that core for a few microseconds, reads the snapshot from its RAM, resumes it and answers;
+   the answer is placed between two bytes of Forth's output. The other core is not paused.
 
 ### 1.4 Repository map
 
 | Path | Content |
 |---|---|
 | `rtl/hf32_cpu.v` | the HF32 CPU: decoder, stacks, ALU, next-state logic, memory ports |
-| `rtl/hf32_mcu.v` | the multi-cycle unit: 32 × 32 multiplier and the IEEE single-precision FPU |
+| `rtl/hf32_mcu.v` | the multi-cycle unit: 32 × 32 multiplier, 64 / 32 divider and the IEEE single-precision FPU |
 | `rtl/forth_system.v` | the system around the cores: the I/O bus and its arbiter, I/O decode, timers, shield pins, pin router, AXI-Lite slave |
 | `rtl/hf32_node.v` | one core with its own RAM and terminal FIFOs (instantiated twice) |
 | `rtl/pwm.v`, `uart.v`, `spi.v`, `i2c.v`, `dds.v`, `tone.v`, `xadc_scan.v`, `patgen.v`, `fifo.v` | the peripherals |
 | `constr/pins.xdc`, `hw/build_hw.tcl` | pin constraints; the Vivado build (block design, bitstream, `.xsa`) |
-| `forth/kernel.fs` | the Forth kernel (905 lines of Forth) |
-| `tools/hf32.py` | cross-compiler, instruction-set simulator, bit-exact FPU model |
+| `forth/kernel.fs` | the Forth kernel (926 lines of Forth), the same for both cores |
+| `tools/hf32.py` | cross-compiler, instruction-set simulator (one core, or both together), bit-exact FPU and divider model |
 | `sw/src/main.c`, `mcnf_node.c`, `flash.c` | the ARM program, the HASE MCNF framing, the QSPI flash driver |
 | `sw/build_sw.tcl`, `build_boot.ps1`, `program_flash.ps1`, `run.tcl` | ARM build, boot image, flash programming, JTAG run |
 | `sim/` | RTL testbenches and their input sessions |
@@ -119,7 +137,7 @@ system, and connects it to the PL through one AXI-Lite slave at `0x43C00000` (4 
 
 | Clock | Frequency | Used by |
 |---|---|---|
-| FCLK0 | 50 MHz | HF32, RAM, all I/O, the AXI-Lite slave (one clock domain) |
+| FCLK0 | 50 MHz | both HF32 cores, their RAM, the I/O bus, all I/O, the AXI-Lite slave (one clock domain) |
 | FCLK1 | 200 MHz | pattern generator player and the DDS phase accumulator (5 ns grid) |
 
 Settings and commands for the 200 MHz blocks cross between the two clocks with toggle
@@ -128,7 +146,9 @@ handshakes (sections 5.12 and 5.15); everything else is synchronous to FCLK0.
 **Why 50 MHz.** HF32 executes one instruction per clock, and its data port is addressed with
 the *next* top of stack (section 3.5): the RAM address is the output of the ALU in the same
 cycle. That path, ALU plus multiplexers plus the block RAM's address setup, is the critical
-one; at 100 MHz it misses by a fraction of a nanosecond. At 50 MHz it has 1.9 ns to spare.
+one; at 100 MHz it misses by a fraction of a nanosecond. At 50 MHz it has about 4 ns to
+spare (section 2.3). The shared I/O bus does not lengthen it: its register stage starts a new
+clock behind each core's address, at the price of one more clock per I/O access.
 A pipelined CPU would run faster but would lose the property that every primitive takes one
 clock and that the compiler never has to schedule around anything except the store hazard.
 
@@ -1040,9 +1060,11 @@ them since ADR-0092 (stacks and dictionary) and ADR-0093 (pin functions).
 
 ## 7 The Forth kernel
 
-The kernel is one Forth source file, `forth/kernel.fs` (905 lines). It compiles to a
-24,044-byte image with 414 words, and everything a user meets is in it: the interpreter, the
-compiler, number and float conversion, the elementary functions and the board words.
+The kernel is one Forth source file, `forth/kernel.fs` (926 lines). It compiles to a
+24,876-byte image with 430 words, and everything a user meets is in it: the interpreter, the
+compiler, number and float conversion, the elementary functions, the board words and the
+words for the two cores. Both cores get the same image; `core#` (`$10001C`) tells a program
+which one it runs on.
 
 ### 7.1 Two compilers that produce the same code
 
@@ -1073,14 +1095,15 @@ uses it where it must *emit* an instruction rather than execute one, as in
 | Address | Content |
 |---|---|
 | `00000` | jump to `cold` (the reset vector) |
-| `00004` | the kernel: headers, code and data, 24,044 bytes |
-| `05DEC` | HERE after a cold start: new words and data grow upward |
-| `1FFFF` | the end of the RAM: 107 KB free for programs |
+| `00004` | the kernel: headers, code and data, 24,876 bytes |
+| `0612C` | HERE after a cold start: new words and data grow upward |
+| `1FFFF` | the end of the RAM: 104 KB free for programs, on each core |
 
 Data structures in the kernel's image: the input buffer `tib` (84 bytes, 80 used), `sbuf`
 (128 bytes, for `.s` and `f.s`), the stack copies `ssnap` and `fssnap` (20 cells each), the
-pin ownership table `pin-owner` (48 bytes), the powers of ten `tens` and the scratch float
-variables of the conversion routines.
+powers of ten `tens` and the scratch float variables of the conversion routines. (The pin
+owners, a 48-byte table in the kernel up to 3.1, are in the hardware since 4.0, so both cores
+see the same ones.)
 
 ### 7.3 Dictionary headers
 
@@ -1100,24 +1123,25 @@ characters and are compared without regard to case.
 
 | Section of `kernel.fs` | Bytes | Words | What it holds |
 |---|---|---|---|
-| Primitives | 1,104 | 61 | `dup + @ f* s>f …`: one machine instruction each, as `:inline` words; `exit`, `execute` |
-| Stack and arithmetic | 1,324 | 33 | `rot`, `min`, `abs`, division, `um*`, `um/mod`, `*/`, `within`, the `do` runtime |
+| Primitives | 1,116 | 61 | `dup + @ f* s>f …`: one machine instruction each, as `:inline` words; `exit`, `execute` |
+| Stack and arithmetic | 1,124 | 35 | `rot`, `min`, `abs`, `um*`, `(um/mod) (urem)` and the division words on them, `*/`, `within`, the `do` runtime |
 | Variables | 528 | 17 | `dp latest state base >in #tib`, `tib`, `here allot , c,`, `hex decimal`, `fill` |
 | Board I/O | 312 | 12 | `key? key emit`, LEDs, buttons, switches, RGB, `ms@ us@ ms` |
-| Shield pins and ownership | 924 | 22 | `pin output input high low toggle pin@ pin!`, `pin-owner`, `claim release owner` |
+| Two cores | 340 | 10 | `core# send receive mail? lock try-lock unlock (lock) shared /shared` |
+| Shield pins and ownership | 1,228 | 26 | `pin output input high low toggle pin@ pin!`, `(owner) owner (mine) (free) claim release`, `unit (unit) unit-free` |
 | Durations | 96 | 1 | `d>ticks` |
-| PWM | 604 | 8 | `pwm-hz pwm-khz pwm-duty pwm-pin pwm-off` |
-| Serial interfaces | 2,508 | 33 | `uart-* spi-* i2c-*` |
-| DDS and tone | 524 | 13 | `dds-hz dds-pin dds-off`, `tone tone-off wave volume beep` |
-| Pattern generator | 828 | 22 | `ns us msec`, `pg-step pg-loop pg-jump pg-wait pg-end`, `pg-start pg-stop …` |
-| Analog inputs | 488 | 9 | `xadc@ adc@ mv@ supply@ temp@ .temp volts@ ftemp@` |
-| Output | 748 | 14 | `cr space spaces type (.") . u. .s ?` |
+| PWM | 696 | 8 | `pwm-hz pwm-khz pwm-duty pwm-pin pwm-off` |
+| Serial interfaces | 2,668 | 33 | `uart-* spi-* i2c-*` |
+| DDS and tone | 572 | 13 | `dds-hz dds-pin dds-off`, `tone tone-off wave volume beep` |
+| Pattern generator | 868 | 22 | `ns us msec`, `pg-step pg-loop pg-jump pg-wait pg-end`, `pg-start pg-stop …` |
+| Analog inputs | 504 | 9 | `xadc@ adc@ mv@ supply@ temp@ .temp volts@ ftemp@` |
+| Output | 764 | 14 | `cr space spaces type (.") . u. .s ?` |
 | Parsing | 388 | 4 | `parse-name parse` |
 | Dictionary search | 488 | 6 | `find-name`, `name>xt` |
 | Numbers | 388 | 3 | `digit? >number number?` |
-| Floating point | 6,384 | 75 | float stack words, `fround floor`, `d>f f>d`, `>float`, `represent`, `f. fs. fe. f.s` |
+| Floating point | 6,400 | 75 | float stack words, `fround floor`, `d>f f>d`, `>float`, `represent`, `f. fs. fe. f.s` |
 | Elementary functions | 3,368 | 28 | `fsin fcos ftan fatan fatan2 fasin facos fexp fln flog falog f** fsinh …` |
-| Compiler | 1,400 | 38 | `header : ; literal fliteral create constant if then do loop ( \ ."` |
+| Compiler | 1,400 | 39 | `header : ; literal fliteral create constant if then do loop ( \ ."` |
 | Interpreter | 1,628 | 14 | `words abort ?stack interpret-word interpret accept-line snap quit cold` |
 
 Floating point and the functions are 40 % of the kernel. That is not the arithmetic, which the
@@ -1479,7 +1503,7 @@ hundred bytes of Forth with no hardware change.
 
 ### 8.1 `tools/hf32.py`
 
-One Python file (about 1,060 lines) with three parts:
+One Python file (about 1,230 lines) with three parts:
 
 - **The cross-compiler** (`Compiler`): reads `kernel.fs` and writes `build/forth.hex` (for
   `$readmemh` in the testbenches), `build/forth_image.h` (for the ARM program) and
@@ -1530,8 +1554,15 @@ serial interfaces, the DDS and the PWM can be checked from Forth through loopbac
   registers read back, DDS and PWM frequencies counted by Forth on a second pin, and the tone
   generator's four waveforms checked by ear.
 
+- For 4.0, on the board over JTAG and then from flash: both cores give the simulator's
+  transcript, line by line, on `smoke`, `divide`, `float` and `manual_checks` (the divider's
+  board test); mailboxes, locks and the shared RAM between the cores; PWM on core 0 and the
+  DDS on core 1 at once, refusals across cores, and a restart of one core while the other
+  runs; core 1's saved source; the HASE node with firmware 4.0.
+
 So every layer is checked against the one above it: IEEE → FPU model → FPU RTL; simulator →
-system RTL (same output for the same session) → board (same output again).
+system RTL (same output for the same session, on one core or both) → board (same output
+again).
 
 ## 9 Building and booting
 
@@ -1608,6 +1639,9 @@ is also available to any other program (`tools/zforth.py` is a command-line exam
 | Separate float stack | Forth-2012's model; integer and float code do not interfere; stack moves between them in one instruction |
 | Single precision, flush to zero | a small, fast FPU without a subnormal shifter; 7 decimal digits are plenty for laboratory values |
 | Decimal conversion in Forth, correctly rounded | exactness where it is visible (what is typed and printed) without hardware cost |
+| Two independent Forths, not a main core and a helper | each core is a whole system: its own terminal, saved source and restart; the same kernel and the same programs on both |
+| One shared I/O bus with a register stage | one copy of every peripheral, a simple arbiter (turn-taking) and no change to the CPU; the register stage keeps the bus out of the CPU's critical path for one clock per I/O access |
+| Owners of pins and peripherals in the hardware | both cores see one table, a claim is atomic (write, then read back), and a core's restart can reset exactly what it held |
 | A 64 / 32 divider, two bits per clock | `um/mod` and `u/mod` in one instruction each (plus the remainder); 17 clocks instead of 13 µs; the same algorithm as the former Forth loop, so 3.x sources give the same results |
 | Any peripheral on any pin | the board's pins are few and fixed; routing in the fabric costs little and the ownership table keeps it safe |
 | One firmware for terminal, app and HASE | no mode switches for the user; the byte values tell the protocols apart |
@@ -1615,13 +1649,14 @@ is also available to any other program (`tools/zforth.py` is a command-line exam
 
 ### 11.2 Room for growth
 
-The design uses 15 % of the logic and 29 % of the block RAM. Possible extensions, none of which
+The design uses 25 % of the logic and 53 % of the block RAM. Possible extensions, none of which
 needs a change to what exists:
 
-- **More RAM:** 99 free block RAMs, about 400 KB more (the address space has room up to 1 MB
-  below the I/O).
+- **More RAM:** 66 free block RAMs, about 260 KB more, per core or as a bigger shared RAM (the
+  address space has room up to 1 MB below the I/O).
 - **Double precision** in the FPU, or a second float format on the same stack.
 - **The missing Forth words** (`does>`, `postpone`, `evaluate`, `case`, `value`, `defer`,
   `see` …), each a few hundred bytes of kernel.
-- **A second HF32** running its own Forth, sharing the I/O.
+- **More cores:** the logic has room for several more; the arbiter would take turns among
+  more requests, and each core would wait longer when all use the I/O at once.
 - **A register stage** in the pattern generator's fetch path, for timing margin at 200 MHz.

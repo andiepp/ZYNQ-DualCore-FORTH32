@@ -1058,6 +1058,13 @@ carry the full values: 0x45 the 32-bit data stack, 0x46 the float stack, 0x47 an
 dictionary with 32-bit addresses, 0x49 the 14 pin functions. HASE-Lab's Forth-Lab family uses
 them since ADR-0092 (stacks and dictionary) and ADR-0093 (pin functions).
 
+These functions concern core 0. From firmware 4.1 the node also serves core 1: a function that
+concerns one core (status, restart, input, output, dictionary, stacks, saved source) plus 0x80
+is the same function for core 1 (`device()` maps it with `core_function()` and takes
+`cores[1]`); the version, board, pattern and pin functions concern the board. Each core has
+its own dictionary table (`dicts[]`). HASE-Lab's Forth-Lab family reads core 1 from firmware
+4.1 (ADR-0094).
+
 ## 7 The Forth kernel
 
 The kernel is one Forth source file, `forth/kernel.fs` (926 lines). It compiles to a

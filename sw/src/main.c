@@ -24,7 +24,7 @@
  * it (the oldest bytes are dropped when nobody does). A probe without a valid frame falls
  * back to the terminal. In HASE mode, a terminal byte (printable ASCII, CR, LF, BS, SOH,
  * Ctrl-R) between two frames switches back, and the held output is sent first. The HASE
- * node talks about core 0 only.
+ * node's functions concern core 0, and with 0x80 added core 1.
  *
  * The input rings (64 KB each, a whole source fits) feed the RX FIFOs as Forth reads them.
  * On the terminal, Forth's output waits in the TX FIFO when the UART is busy, so nothing
@@ -40,7 +40,8 @@
  * The HASE node keeps the 16-bit Forth-Lab's functions and answers them as before (cells
  * and addresses that do not fit 16 bits are clipped), so today's Forth-Lab panel works
  * unchanged; functions 0x45-0x49 give the 32-bit stack, the float stack, the full
- * dictionary addresses and the pin functions.
+ * dictionary addresses and the pin functions. They concern core 0; from firmware 4.1 the
+ * same functions plus 0x80 concern core 1 (HASE-Lab ADR-0094).
  */
 
 #include <stdio.h>
@@ -55,9 +56,9 @@
 #include "mcnf_node.h"
 
 #define FIRMWARE_NAME       "zynq-dual-forth32"
-#define FIRMWARE_VERSION    "4.0.1"
+#define FIRMWARE_VERSION    "4.1"
 #define FIRMWARE_MAJOR      4               /* as the HASE node reports it (function 0x15) */
-#define FIRMWARE_MINOR      0
+#define FIRMWARE_MINOR      1
 #define PROTOCOL_VERSION    3               /* 3: two cores; 2: 32-bit cells and the float stack */
 #define MAX_CORES           2
 
@@ -165,7 +166,7 @@ static struct core cores[MAX_CORES] = {
     { 0, FORTH_BASE, FLASH_SOURCE_BASE, in_ring0, out_ring0 },
     { 1, FORTH_BASE + CORE1_OFFSET, FLASH_SOURCE_BASE1, in_ring1, out_ring1 },
 };
-static struct core *const c0 = &cores[0];          /* the HASE node's core */
+static struct core *const c0 = &cores[0];          /* core 0: requests without a core */
 static int ncores = 1;                              /* 2 on the dual-core logic */
 static int input_core;                              /* where terminal input goes */
 static int mux;                                     /* both cores' output on the UART */
@@ -188,14 +189,17 @@ static XTime rx_last;
 static enum { LINK_TERMINAL, LINK_PROBE, LINK_HASE } link_mode;
 static XTime probe_start;
 
-/* the dictionary table the HASE node serves page by page */
-static struct {
-    u32 xt;
-    u8 flags, length;
-    char name[NAME_MAX];
-} dict[DICT_MAX];
-static u16 dict_count;
-static u32 dict_latest, dict_here;
+/* the dictionary tables the HASE node serves page by page, one per core (a snapshot of
+   one core and pages of the other may interleave) */
+static struct dict_table {
+    struct {
+        u32 xt;
+        u8 flags, length;
+        char name[NAME_MAX];
+    } e[DICT_MAX];
+    u16 count;
+    u32 latest, here;
+} dicts[MAX_CORES];
 
 /* ------------------------------------------------------------------------------------ */
 /* UART and Forth's FIFOs                                                               */
@@ -848,7 +852,7 @@ static void terminal_receive(u8 b)
 }
 
 /* ------------------------------------------------------------------------------------ */
-/* HASE node (MCNF device functions, HASE-Lab Hase.Mcnf.ForthLab): core 0               */
+/* HASE node (MCNF device functions, HASE-Lab Hase.Mcnf.ForthLab): core 0, core 1 +0x80 */
 /* ------------------------------------------------------------------------------------ */
 
 static u32 read_u32(const u8 *b)
@@ -869,37 +873,58 @@ static u16 addr16(u32 address)
     return address > 0xFFFF ? 0xFFFF : address;
 }
 
-/* walks core 0's header list while it is paused; links must point downwards */
-static void dict_snapshot(void)
+/* walks a core's header list while it is paused; links must point downwards */
+static void dict_snapshot(struct core *c)
 {
+    struct dict_table *d = &dicts[c->index];
     u32 h;
 
-    cpu_pause(c0);
-    dict_latest = ram_read(c0, FORTH_LATEST_ADDR);
-    dict_here = ram_read(c0, FORTH_DP_ADDR);
-    dict_count = 0;
-    for (h = dict_latest; h != 0 && dict_count < DICT_MAX; ) {
-        u8 count = ram_byte(c0, h + 4);
+    cpu_pause(c);
+    d->latest = ram_read(c, FORTH_LATEST_ADDR);
+    d->here = ram_read(c, FORTH_DP_ADDR);
+    d->count = 0;
+    for (h = d->latest; h != 0 && d->count < DICT_MAX; ) {
+        u8 count = ram_byte(c, h + 4);
         u8 length = count & 0x1F;
-        u32 link_to = ram_read(c0, h);
+        u32 link_to = ram_read(c, h);
 
-        dict[dict_count].flags = count & 0xE0;
-        dict[dict_count].length = length;
+        d->e[d->count].flags = count & 0xE0;
+        d->e[d->count].length = length;
         for (int k = 0; k < length; k++)
-            dict[dict_count].name[k] = ram_byte(c0, h + 5 + k);
-        dict[dict_count].xt = (h + 5 + length + 3) & ~3u;
-        dict_count++;
+            d->e[d->count].name[k] = ram_byte(c, h + 5 + k);
+        d->e[d->count].xt = (h + 5 + length + 3) & ~3u;
+        d->count++;
         if (link_to >= h)
             break;
         h = link_to;
     }
-    cpu_resume(c0);
+    cpu_resume(c);
+}
+
+/* the functions that concern one core: core 0's codes, and core 1's with 0x80 added
+   (firmware 4.1); the version, board, pattern and pin functions are the board's */
+static int core_function(u8 f)
+{
+    return (f >= FN_STATUS && f <= FN_OUTPUT) ||
+           (f >= FN_DICT_SNAPSHOT && f <= FN_DATA_STACK) ||
+           (f >= FN_DATA_STACK32 && f <= FN_DICT_PAGE32) ||
+           (f >= FN_SOURCE_INFO && f <= FN_AUTOSTART_SET);
 }
 
 static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_length,
                  u8 *payload, u8 *payload_length)
 {
+    struct core *c = c0;
+    struct dict_table *d;
     u32 n, i, offset, length;
+
+    if (function & 0x80) {                          /* core 1 */
+        if (ncores < 2 || !core_function(function & 0x7F))
+            return MCNF_ERR_UNKNOWN_FUNCTION;
+        c = &cores[1];
+        function &= 0x7F;
+    }
+    d = &dicts[c->index];
 
     switch (function) {
     case FN_VERSION:
@@ -911,18 +936,18 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         return MCNF_ERR_NONE;
 
     case FN_STATUS:
-        n = (c0->in_head - c0->in_tail) + (c0->feed_len - c0->feed_pos);
-        payload[0] = c0->running;
-        mcnf_write_u16(payload + 1, (Xil_In32(c0->base + REG_STATUS) >> 16) & PC_MASK);
+        n = (c->in_head - c->in_tail) + (c->feed_len - c->feed_pos);
+        payload[0] = c->running;
+        mcnf_write_u16(payload + 1, (Xil_In32(c->base + REG_STATUS) >> 16) & PC_MASK);
         mcnf_write_u16(payload + 3, n > 0xFFFF ? 0xFFFF : n);
-        mcnf_write_u16(payload + 5, c0->out_head - c0->out_tail);
-        mcnf_write_u32(payload + 7, c0->out_dropped);
-        mcnf_write_u16(payload + 11, c0->starts);
-        payload[13] = (c0->stored_state == 1 ? AUTO_STORED : 0) |
-                      (c0->stored_state == 1 && c0->stored.autostart ? AUTO_ON : 0) |
-                      (!strcmp(c0->last_start, "fed") ? AUTO_FED : 0) |
-                      (!strcmp(c0->last_start, "skipped") ? AUTO_SKIPPED : 0);
-        mcnf_write_u32(payload + 14, c0->stored_state == 1 ? c0->stored.length : 0);
+        mcnf_write_u16(payload + 5, c->out_head - c->out_tail);
+        mcnf_write_u32(payload + 7, c->out_dropped);
+        mcnf_write_u16(payload + 11, c->starts);
+        payload[13] = (c->stored_state == 1 ? AUTO_STORED : 0) |
+                      (c->stored_state == 1 && c->stored.autostart ? AUTO_ON : 0) |
+                      (!strcmp(c->last_start, "fed") ? AUTO_FED : 0) |
+                      (!strcmp(c->last_start, "skipped") ? AUTO_SKIPPED : 0);
+        mcnf_write_u32(payload + 14, c->stored_state == 1 ? c->stored.length : 0);
         *payload_length = 18;
         return MCNF_ERR_NONE;
 
@@ -930,17 +955,17 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         if (param_length > 1)
             return MCNF_ERR_VARIABLE_DATA;
         *payload_length = 0;
-        return load_and_start(c0, param_length && (params[0] & 1))
+        return load_and_start(c, param_length && (params[0] & 1))
                ? MCNF_ERR_NONE : FORTH_ERR_IMAGE_VERIFY;
 
     case FN_INPUT:
         if (param_length == 0)
             return MCNF_ERR_VARIABLE_DATA;
-        n = IN_SIZE - (c0->in_head - c0->in_tail);
+        n = IN_SIZE - (c->in_head - c->in_tail);
         if (n > param_length)
             n = param_length;
         for (i = 0; i < n; i++)
-            c0->in_ring[c0->in_head++ % IN_SIZE] = params[i];
+            c->in_ring[c->in_head++ % IN_SIZE] = params[i];
         payload[0] = n;
         *payload_length = 1;
         return MCNF_ERR_NONE;
@@ -948,12 +973,12 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     case FN_OUTPUT:
         if (response_length < 3)
             return FORTH_ERR_RESPONSE_LENGTH;
-        n = c0->out_head - c0->out_tail;
+        n = c->out_head - c->out_tail;
         if (n > response_length - 3u)
             n = response_length - 3u;
         payload[0] = n;
         for (i = 0; i < n; i++)
-            payload[1 + i] = c0->out_ring[c0->out_tail++ % OUT_SIZE];
+            payload[1 + i] = c->out_ring[c->out_tail++ % OUT_SIZE];
         for (; i < response_length - 3u; i++)
             payload[1 + i] = 0;
         *payload_length = response_length - 2;
@@ -961,15 +986,15 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
 
     case FN_DICT_SNAPSHOT:
     case FN_DICT_SNAPSHOT32:
-        dict_snapshot();
-        mcnf_write_u16(payload, dict_count);
+        dict_snapshot(c);
+        mcnf_write_u16(payload, d->count);
         if (function == FN_DICT_SNAPSHOT) {
-            mcnf_write_u16(payload + 2, addr16(dict_latest));
-            mcnf_write_u16(payload + 4, addr16(dict_here));
+            mcnf_write_u16(payload + 2, addr16(d->latest));
+            mcnf_write_u16(payload + 4, addr16(d->here));
             *payload_length = 6;
         } else {
-            mcnf_write_u32(payload + 2, dict_latest);
-            mcnf_write_u32(payload + 6, dict_here);
+            mcnf_write_u32(payload + 2, d->latest);
+            mcnf_write_u32(payload + 6, d->here);
             *payload_length = 10;
         }
         return MCNF_ERR_NONE;
@@ -982,17 +1007,17 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
             return MCNF_ERR_VARIABLE_DATA;
         n = 0;                                      /* entries */
         length = 1;                                 /* payload bytes used */
-        for (i = (params[0] << 8) | params[1]; i < dict_count; i++) {
-            if (length + 4 + wide + dict[i].length > response_length - 2u)
+        for (i = (params[0] << 8) | params[1]; i < d->count; i++) {
+            if (length + 4 + wide + d->e[i].length > response_length - 2u)
                 break;
             if (wide)
-                mcnf_write_u32(payload + length, dict[i].xt);
+                mcnf_write_u32(payload + length, d->e[i].xt);
             else
-                mcnf_write_u16(payload + length, addr16(dict[i].xt));
-            payload[length + 2 + wide] = dict[i].flags;
-            payload[length + 3 + wide] = dict[i].length;
-            memcpy(payload + length + 4 + wide, dict[i].name, dict[i].length);
-            length += 4 + wide + dict[i].length;
+                mcnf_write_u16(payload + length, addr16(d->e[i].xt));
+            payload[length + 2 + wide] = d->e[i].flags;
+            payload[length + 3 + wide] = d->e[i].length;
+            memcpy(payload + length + 4 + wide, d->e[i].name, d->e[i].length);
+            length += 4 + wide + d->e[i].length;
             n++;
         }
         payload[0] = n;
@@ -1004,7 +1029,7 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     /* the data stack as the 16-bit Forth-Lab reads it: cells clipped to -32768..32767 */
     case FN_DATA_STACK: {
         u32 items[STACK_MAX];
-        int depth = stack_snapshot(c0, items, 0, 0);
+        int depth = stack_snapshot(c, items, 0, 0);
 
         if (depth < 0)
             return ERR_STACK_BUSY;
@@ -1020,7 +1045,7 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
     case FN_DATA_STACK32:
     case FN_FLOAT_STACK: {
         u32 items[STACK_MAX], fitems[STACK_MAX];
-        int fdepth, depth = stack_snapshot(c0, items, fitems, &fdepth);
+        int fdepth, depth = stack_snapshot(c, items, fitems, &fdepth);
         int float_stack = function == FN_FLOAT_STACK;
 
         if (depth < 0)
@@ -1063,10 +1088,10 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         return MCNF_ERR_NONE;
 
     case FN_SOURCE_INFO:
-        payload[0] = c0->stored_state;
-        payload[1] = c0->stored_state == 1 && c0->stored.autostart;
-        mcnf_write_u32(payload + 2, c0->stored_state ? c0->stored.length : 0);
-        mcnf_write_u32(payload + 6, c0->stored_state ? c0->stored.crc : 0);
+        payload[0] = c->stored_state;
+        payload[1] = c->stored_state == 1 && c->stored.autostart;
+        mcnf_write_u32(payload + 2, c->stored_state ? c->stored.length : 0);
+        mcnf_write_u32(payload + 6, c->stored_state ? c->stored.crc : 0);
         *payload_length = 10;
         return MCNF_ERR_NONE;
 
@@ -1090,7 +1115,7 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         if (crc32(staging, length) != read_u32(params + 4))
             return ERR_SOURCE_CRC;
         *payload_length = 0;
-        return source_commit(c0, length, read_u32(params + 4), params[8] ? 1 : 0)
+        return source_commit(c, length, read_u32(params + 4), params[8] ? 1 : 0)
                ? MCNF_ERR_NONE : ERR_FLASH;
 
     case FN_SOURCE_READ:
@@ -1100,26 +1125,26 @@ static u8 device(u8 function, const u8 *params, u8 param_length, u8 response_len
         n = response_length - 2u;
         if (offset > SOURCE_MAX || n > SOURCE_MAX - offset)
             return MCNF_ERR_VARIABLE_DATA;
-        memcpy(payload, c0->sector + SOURCE_HEADER + offset, n);
+        memcpy(payload, c->sector + SOURCE_HEADER + offset, n);
         *payload_length = n;
         return MCNF_ERR_NONE;
 
     case FN_SOURCE_ERASE:
         *payload_length = 0;
-        if (!flash_erase_sector(c0->flash_base))
+        if (!flash_erase_sector(c->flash_base))
             return ERR_FLASH;
-        source_load(c0);
-        return c0->stored_state == 0 ? MCNF_ERR_NONE : ERR_FLASH;
+        source_load(c);
+        return c->stored_state == 0 ? MCNF_ERR_NONE : ERR_FLASH;
 
     case FN_AUTOSTART_SET:
         if (param_length != 1)
             return MCNF_ERR_VARIABLE_DATA;
-        if (c0->stored_state != 1)
+        if (c->stored_state != 1)
             return ERR_NO_SOURCE;
-        c0->stored.autostart = params[0] ? 1 : 0;
-        memcpy(c0->sector, &c0->stored, sizeof c0->stored);
+        c->stored.autostart = params[0] ? 1 : 0;
+        memcpy(c->sector, &c->stored, sizeof c->stored);
         *payload_length = 0;
-        return source_write(c0, c0->stored.length) ? MCNF_ERR_NONE : ERR_FLASH;
+        return source_write(c, c->stored.length) ? MCNF_ERR_NONE : ERR_FLASH;
 
     default:
         return MCNF_ERR_UNKNOWN_FUNCTION;

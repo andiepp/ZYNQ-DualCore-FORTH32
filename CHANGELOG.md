@@ -3,6 +3,14 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
+## 4.1 — unreleased
+
+- **The HASE node serves core 1** (HASE-Lab ADR-0094): each MCNF function that concerns one
+  core has a twin for core 1, its code plus 0x80 (status 0xB0, restart 0xB1, input 0xB2,
+  output 0xB3, dictionary and stacks 0xC0–0xC2 and 0xC5–0xC8, saved source 0xD0–0xD5); the
+  board's functions (0x15, 0x43, 0x44, 0x49) have none. One dictionary table per core. The
+  node reports firmware 4.1. Nothing changes for the app, the terminal or protocol 3.
+
 ## 4.0.1 — 2026-11-04
 
 - **I²C bus recovery:** `i2c-open` (and `i2c-open-pins`) first gives SCL 9 clocks with SDA

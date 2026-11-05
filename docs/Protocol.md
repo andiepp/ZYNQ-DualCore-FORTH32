@@ -216,7 +216,8 @@ extends rule 3 of the stream splitting: a header line `@` plus one digit is a ma
 answer, and carries no payload.
 
 `mux` lasts until `mux off` or the next power-up (restarting a core keeps it): a client switches it on after
-every `version` it uses to connect. The HASE mode (below) always talks about core 0.
+every `version` it uses to connect. In HASE mode (below) the functions concern core 0, and
+from firmware 4.1 the same functions plus 0x80 core 1.
 
 ### Example
 
@@ -256,7 +257,7 @@ been quiet for 200 ms before its first frame, which leaves Forth's start-up outp
 terminal. A stray `0xA1` typed into a terminal only shows a `!`.
 
 In HASE mode the node has the type of the 16-bit Forth-Lab node, `AE.07.30.80`, and reports
-firmware 3.0. Its frames and device functions are those of HASE-Lab's Forth-Lab family, so
+its firmware as major.minor (4.1). Its frames and device functions are those of HASE-Lab's Forth-Lab family, so
 today's Forth-Lab panel works with it unchanged: 0x15 (version), 0x30–0x33 (status, restart,
 input, output), 0x40–0x42 (dictionary and data stack), 0x43 (the registers of the `board`
 request, binary, 84 bytes), 0x44 (the pattern generator, the `pg` line's two words as u32,
@@ -281,6 +282,25 @@ firmware 3.0 on (ADR-0092, 2026-11-03): its panel shows the 32-bit data stack, t
 and five-digit dictionary addresses, and opens this project's manual. It reads 0x49 from
 firmware 3.1 on (ADR-0093, 2026-11-04) and adds the `fn` line to its board text: the panel's
 board view shows pins 42..47 and the pins the serial interfaces and the DDS own.
+
+### Core 1 (firmware 4.1)
+
+The functions above concern core 0. From firmware 4.1, each function that concerns one core
+has a twin for core 1, its code plus 0x80, with the same parameters and answers:
+
+| Core 0 | Core 1 | Function |
+|---|---|---|
+| 0x30–0x33 | 0xB0–0xB3 | status, restart, input, output |
+| 0x40–0x42 | 0xC0–0xC2 | dictionary snapshot and page, data stack (16-bit values) |
+| 0x45–0x48 | 0xC5–0xC8 | data stack (32 bits), float stack, dictionary snapshot and page (32-bit addresses) |
+| 0x50–0x55 | 0xD0–0xD5 | saved source: info, write, commit, read, erase, autostart (core 1's sector, 0xFD0000) |
+
+0x15 (version), 0x43 (board), 0x44 (pattern generator) and 0x49 (pin functions) concern the
+whole board and have no twin. Each core has its own dictionary table, so a snapshot of one
+core and pages of the other may interleave. The source functions share one staging buffer:
+upload one core's source at a time. A node without core 1 (firmware 3.x or 4.0, or 4.1 on a
+single-core bitstream) answers the twins with "unknown function". HASE-Lab's Forth-Lab family
+uses them from firmware 4.1 (ADR-0094).
 
 ## Example in Python
 

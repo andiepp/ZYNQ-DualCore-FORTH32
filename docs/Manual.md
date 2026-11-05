@@ -109,6 +109,13 @@ manual. Since ADR-0093 (2026-11-04) it also reads function 0x49 for firmware 3.1
 view shows SCL, SDA and the SPI header's pins and labels the pins the serial interfaces and
 the DDS own, as the app does (section 2.9).
 
+Firmware 4.x is the same node for HASE, with core 0 as the Forth-Lab instrument. Since
+ADR-0094 (2026-11-05) firmware 4.1 also serves core 1: each MCNF function of one core has a
+twin for core 1, its code plus 0x80 (docs/Protocol.md, "Core 1"). The HASE panel then has the
+app's Core 0 / Core 1 switch (Ctrl+1 / Ctrl+2) with each core's terminal, editor, stacks,
+dictionary and saved source, the board view and the pattern editor shared, and its Manual
+button opens this manual; with firmware 4.0 it shows core 0 and says that core 1 needs 4.1.
+
 ### First session
 
 ```

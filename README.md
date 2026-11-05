@@ -42,7 +42,8 @@ step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
   requests and both cores' output on the same line ([docs/Protocol.md](docs/Protocol.md)).
 - **HASE compatible**: the firmware is also the Forth node of the
   [HASE](https://github.com/andiepp/HASE) laboratory and switches to HASE's MCNF protocol by
-  itself when a HASE host talks to it; the node serves core 0.
+  itself when a HASE host talks to it; from firmware 4.1 the node serves both cores, and
+  HASE-Lab's Forth-Lab panel has the app's Core 0 / Core 1 switch (ADR-0094).
 - One Forth source per core can be **saved in flash** and runs at every start of that core
   (hold BTN3 to skip it). Core 0 keeps the single-core firmware's sector, so its source
   carries over.

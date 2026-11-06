@@ -30,21 +30,77 @@ in the kernel. For the instruction encoding and the register maps, see
 
 Contents:
 
-1. [Getting started](#1-getting-started)
-2. [The ZYNQ-DualCore-FORTH32 app](#2-the-zynq-dualcore-forth32-app)
-3. [Working with the interpreter](#3-working-with-the-interpreter)
-4. [How the implementation works](#4-how-the-implementation-works)
-5. [Word reference](#5-word-reference)
-6. [Examples](#6-examples)
-7. [Differences from standard Forth](#7-differences-from-standard-forth)
-8. [Changing the kernel](#8-changing-the-kernel)
-9. [Troubleshooting](#9-troubleshooting)
+- **[1. Getting started](#1-getting-started)**
+  - [1.1 What you need](#11-what-you-need)
+  - [1.2 Put ZYNQ-DualCore-FORTH32 on the board](#12-put-zynq-dualcore-forth32-on-the-board)
+  - [1.3 Connect](#13-connect)
+  - [1.4 First session](#14-first-session)
+- **[2. The ZYNQ-DualCore-FORTH32 app](#2-the-zynq-dualcore-forth32-app)**
+  - [2.1 Connecting](#21-connecting)
+  - [2.2 The layout](#22-the-layout)
+  - [2.3 Skins](#23-skins)
+  - [2.4 The terminal](#24-the-terminal)
+  - [2.5 The editor](#25-the-editor)
+  - [2.6 The pattern editor](#26-the-pattern-editor)
+  - [2.7 The stacks and the dictionary](#27-the-stacks-and-the-dictionary)
+  - [2.8 The saved source](#28-the-saved-source)
+  - [2.9 The board view](#29-the-board-view)
+  - [2.10 A worked session](#210-a-worked-session)
+  - [2.11 Two cores](#211-two-cores)
+- **[3. Working with the interpreter](#3-working-with-the-interpreter)**
+  - [3.1 Input line](#31-input-line)
+  - [3.2 Words and numbers](#32-words-and-numbers)
+  - [3.3 Stack notation](#33-stack-notation)
+  - [3.4 Errors](#34-errors)
+- **[4. How the implementation works](#4-how-the-implementation-works)**
+  - [4.1 The pieces](#41-the-pieces)
+  - [4.2 The HF32 CPU](#42-the-hf32-cpu)
+  - [4.3 Memory map](#43-memory-map)
+  - [4.4 Dictionary entries](#44-dictionary-entries)
+  - [4.5 What a colon definition compiles to](#45-what-a-colon-definition-compiles-to)
+  - [4.6 Start-up](#46-start-up)
+  - [4.7 The saved program (autostart)](#47-the-saved-program-autostart)
+- **[5. Word reference](#5-word-reference)**
+  - [5.1 Data stack](#51-data-stack)
+  - [5.2 Return stack](#52-return-stack)
+  - [5.3 Arithmetic](#53-arithmetic)
+  - [5.4 Logic and shifts](#54-logic-and-shifts)
+  - [5.5 Comparison](#55-comparison)
+  - [5.6 Memory](#56-memory)
+  - [5.7 Dictionary space](#57-dictionary-space)
+  - [5.8 Terminal input and output](#58-terminal-input-and-output)
+  - [5.9 Number base](#59-number-base)
+  - [5.10 Board I/O](#510-board-io)
+  - [5.11 Shield digital pins](#511-shield-digital-pins)
+  - [5.12 Analog inputs](#512-analog-inputs)
+  - [5.13 PWM](#513-pwm)
+  - [5.14 Pattern generator](#514-pattern-generator)
+  - [5.15 Floating point](#515-floating-point)
+  - [5.16 Serial interfaces](#516-serial-interfaces)
+  - [5.17 DDS and tone generator](#517-dds-and-tone-generator)
+  - [5.18 Defining words](#518-defining-words)
+  - [5.19 Control structures](#519-control-structures)
+  - [5.20 Compiler and execution](#520-compiler-and-execution)
+  - [5.21 Comments](#521-comments)
+  - [5.22 Interpreter and system](#522-interpreter-and-system)
+  - [5.23 Variables used by the system](#523-variables-used-by-the-system)
+  - [5.24 Internal words](#524-internal-words)
+  - [5.25 Two cores](#525-two-cores)
+- **[6. Examples](#6-examples)**
+  - [6.1 LEDs and buttons](#61-leds-and-buttons)
+  - [6.2 Shield connector](#62-shield-connector)
+  - [6.3 Pattern generator](#63-pattern-generator)
+  - [6.4 Floating point](#64-floating-point)
+  - [6.5 Two cores](#65-two-cores)
+- **[7. Differences from standard Forth](#7-differences-from-standard-forth)**
+- **[8. Changing the kernel](#8-changing-the-kernel)**
+- **[9. Troubleshooting](#9-troubleshooting)**
 
 ---
 
 ## 1. Getting started
 
-### What you need
+### 1.1 What you need
 
 - A Digilent **Arty Z7-20** (the -10 has a smaller FPGA and is not supported) and a micro-USB
   cable to the port marked PROG/UART (J14).
@@ -52,7 +108,7 @@ Contents:
 - To write ZYNQ-DualCore-FORTH32 into the board's flash: the AMD/Xilinx **Vitis** or **Vivado
   Lab** tools (for `program_flash`), once.
 
-### Put ZYNQ-DualCore-FORTH32 on the board
+### 1.2 Put ZYNQ-DualCore-FORTH32 on the board
 
 Paths in this manual are relative to the **ZYNQ-DualCore-FORTH32 folder**: the repository, or
 the folder of an unpacked release. Commands run in that folder.
@@ -79,7 +135,7 @@ ZYNQ-FORTH stays in the flash untouched, and is there again if you go back to it
 For development, `xsct sw/run.tcl` loads the bitstream and the ARM program over JTAG
 instead (JP4 on JTAG; it lasts until the board is switched off).
 
-### Connect
+### 1.3 Connect
 
 Plug in the USB cable. Windows shows the board as a USB serial port. Its number differs
 from PC to PC (COM3, COM7, COM17 …); the Device Manager lists it under *Ports*, and this
@@ -116,7 +172,7 @@ app's Core 0 / Core 1 switch (Ctrl+1 / Ctrl+2) with each core's terminal, editor
 dictionary and saved source, the board view and the pattern editor shared, and its Manual
 button opens this manual; with firmware 4.0 it shows core 0 and says that core 1 needs 4.1.
 
-### First session
+### 1.4 First session
 
 ```
 [zynq-dual-forth32] 4.0, core 0, kernel 6219 words loaded and verified
@@ -507,6 +563,7 @@ and leaves `c`. The effect on the float stack is written after `F:`, so `f>s` is
 | ` stack overflow` | more than 20 items on the data stack | stacks cleared |
 | ` float stack underflow` | a word took more floats than were on the float stack | stacks cleared |
 | ` float stack overflow` | more than 20 items on the float stack | stacks cleared |
+| ` bad led` | `led-on`, `led-off`, `led-toggle` or `led-mask` got a number outside 0..3 (section 5.10) | stacks cleared |
 | ` bad pin` | a pin word got a number that is not a shield pin (section 5.11) | stacks cleared |
 | ` bad channel` | `adc@`, `mv@` or `volts@` got a channel above 8 (section 5.12), or a PWM word a channel above 3 | stacks cleared |
 | ` bad frequency` | `pwm-hz` got 0, or `pwm-khz` a number outside 1..25000 (section 5.13) | stacks cleared |
@@ -906,6 +963,10 @@ whatever the base is.
 |---|---|---|
 | `led!` | `( n -- )` | Set LD0..LD3 from bits 0..3 of n (1 = on). |
 | `led@` | `( -- n )` | Read back the LED state. |
+| `led-on` | `( n -- )` | Switch LED n (0..3, LD0..LD3) on; the other LEDs stay as they are. |
+| `led-off` | `( n -- )` | Switch LED n (0..3) off; the other LEDs stay as they are. |
+| `led-toggle` | `( n -- )` | Change LED n (0..3): on becomes off, off becomes on. |
+| `led-mask` | `( n -- mask )` | The bit of LED n in `led!` (1 for LD0 … 8 for LD3); ` bad led` for n outside 0..3. |
 | `btn@` | `( -- n )` | Buttons: bit 0 = BTN0 … bit 3 = BTN3, 1 = pressed. Debounced (sampled every 10 ms). |
 | `sw@` | `( -- n )` | Switches: bit 0 = SW0, bit 1 = SW1, 1 = on. |
 | `rgb!` | `( n -- )` | RGB LEDs: bits 0/1/2 = LD4 red/green/blue, bits 3/4/5 = LD5 red/green/blue. |
@@ -914,6 +975,12 @@ whatever the base is.
 | `ms@` | `( -- u )` | Millisecond counter, 32 bits; wraps every 2^32 ms (about 49.7 days). |
 | `us@` | `( -- u )` | Microsecond counter, 32 bits; wraps every 2^32 µs (about 71.6 minutes). |
 
+`led!` sets all four LEDs at once; `led-on`, `led-off` and `led-toggle` change one LED and
+leave the others as they are. The LED numbers are the board's labels LD0..LD3, the same as
+the bit numbers of `led!`. The three words switch the LED in the hardware with a single store
+(the LED change register, design.md 5.3), so both cores can change their own LEDs at the same
+time and neither loses a change, which `led@ … or led!` on both cores could.
+
 The RGB LEDs run at full brightness, which is very bright; there is no dimming.
 
 Differences of counter readings stay right across a wrap-around, as long as the interval
@@ -921,6 +988,10 @@ is shorter than the wrap time: `us@ … us@ swap -` gives the microseconds in be
 
 ```
 5 led!            \ LD0 and LD2 on
+1 led-on          \ LD1 on as well: LD0, LD1 and LD2 are lit
+0 led-off         \ LD0 off: LD1 and LD2 stay
+led@ .            \ prints 6
+: blink3 10 0 do 3 led-toggle 200 ms loop ;   \ LD3 blinks 5 times, the others stay
 btn@ .            \ hold BTN1 while pressing Enter: prints 2
 9 rgb!            \ LD4 red, LD5 red
 ```
@@ -1919,6 +1990,14 @@ count16
 mirror
 ```
 
+**Two LEDs blinking in turn** (one LED at a time with `led-on` and `led-toggle`)
+```forth
+: alternate ( -- )   \ LD0 and LD1 take turns; any key stops
+  0 led! 0 led-on
+  begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;
+alternate
+```
+
 **Running light, speed from the switches**
 ```forth
 : delay sw@ 1+ 100 * ms ;
@@ -2114,6 +2193,14 @@ shared @ .                                                      \ after both: 20
 ```
 To start both at the same moment, let core 0 send a cell first and core 1 begin with
 `receive drop bump`.
+
+**Each core blinks its own LED.** `led-toggle` switches one LED in the hardware, so the two
+loops never undo each other's change, however they line up:
+```forth
+: blink ( n -- ) begin dup led-toggle 250 ms key? until key 2drop ;
+0 blink                                       \ core 0: LD0
+1 blink                                       \ core 1: LD1
+```
 
 **Who is running?** `core#` on each core:
 ```forth

@@ -133,6 +133,13 @@ create tib 84 allot
 : emit ( c -- ) begin $100004 @ 2 and until $100000 ! ;
 : led! ( n -- ) $100008 ! ;
 : led@ ( -- n ) $100008 @ ;
+\ One LED by its number 0..3 (LD0..LD3). The LED change register $100058 switches it in the
+\ hardware (bits 3..0 on, 7..4 off, 11..8 toggle), so a change from the other core at the
+\ same moment is never lost, as it could be by reading and writing back led@.
+: led-mask ( n -- mask ) dup 4 u< 0= if ."  bad led" cr abort then 1 swap lshift ;
+: led-on ( n -- ) led-mask $100058 ! ;
+: led-off ( n -- ) led-mask 4 lshift $100058 ! ;
+: led-toggle ( n -- ) led-mask 8 lshift $100058 ! ;
 : btn@ ( -- n ) $10000C @ 15 and ;
 : sw@ ( -- n ) $10000C @ 4 rshift ;
 : rgb! ( n -- ) $100010 ! ;

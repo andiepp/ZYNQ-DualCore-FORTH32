@@ -817,6 +817,8 @@ class Machine:
             return box[0] if box else 0
         if k == 21:
             return (1 if sh.mail[self.core] else 0) | (2 if len(sh.mail[1 - self.core]) < 32 else 0)
+        if k == 22:
+            return self.leds                             # the LED change register reads the LEDs
         if 24 <= k < 32:
             holder = sh.locks[k - 24]
             return 0 if holder is None else 1 if holder == self.core else 2
@@ -953,6 +955,9 @@ class Machine:
                 box = sh.mail[1 - self.core]
                 if len(box) < 32:
                     box.append(v & M32)
+                return
+            if k == 22:                                  # LED change: on, off, toggle at once
+                self.leds = ((self.leds | (v & 0xF)) & ~(v >> 4) & 0xF) ^ ((v >> 8) & 0xF)
                 return
             if 24 <= k < 32:
                 n = k - 24

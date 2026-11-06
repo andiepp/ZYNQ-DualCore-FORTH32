@@ -42,6 +42,8 @@ New-Item -ItemType Directory -Force $firmware | Out-Null
 
 # the PDFs first: the app embeds docs\Manual.pdf when it is built
 if (-not $SkipPdf) {
+    python (Join-Path $root 'tools\manual_contents.py')    # the manual's contents from its headings
+    if ($LASTEXITCODE) { throw 'manual contents failed' }
     python (Join-Path $root 'tools\manual_pdf.py')
     if ($LASTEXITCODE) { throw 'manual PDF failed' }
     python (Join-Path $root 'tools\manual_pdf.py') design

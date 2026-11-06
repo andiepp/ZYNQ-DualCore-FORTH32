@@ -5,7 +5,7 @@ param(
     # not board31.txt: it is the 3.1 board script for jumpers that connect both ways; the
     # testbench's loopback connects one way only (periph.txt's pins), so its UART test would
     # wait forever in the RTL
-    [string[]]$Inputs = @('smoke', 'divide', 'float', 'manual_checks', 'periph', 'shield', 'pwm', 'manual_examples'),
+    [string[]]$Inputs = @('smoke', 'divide', 'float', 'manual_checks', 'periph', 'shield', 'pwm', 'manual_examples', 'leds'),
     [string]$Vivado
 )
 $ErrorActionPreference = 'Stop'

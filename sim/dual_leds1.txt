@@ -1,0 +1,2 @@
+: t1 1001 0 do 1 led-toggle loop ;
+receive drop  t1  2 send

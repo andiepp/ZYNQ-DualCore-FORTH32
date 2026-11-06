@@ -219,6 +219,10 @@ module forth_system #(
     // with its receiver's reset.
     // ------------------------------------------------------------------
     wire        io_mail = io_lo && io_k[6:2] == 5'd5;      // $100050..$10005C
+    // $100058 (in the mailbox's block, which uses $100050 and $100054): the LED change
+    // register. One store sets, clears and toggles LEDs at once (bits 3..0 on, 7..4 off,
+    // 11..8 toggled), so the two cores never lose each other's LED changes.
+    wire        io_ledc = io_lo && io_k == 7'd22;
     wire        io_lock = io_lo && io_k[6:3] == 4'd3;      // $100060..$10007C
     wire [31:0] mb0_dout, mb1_dout;
     wire        mb0_empty, mb0_full, mb1_empty, mb1_full;
@@ -554,6 +558,7 @@ module forth_system #(
     //   k 0..7     $100000..$10001C  terminal, its status, LEDs, buttons, RGB, ms timer,
     //                                us timer, core number
     //   k 20, 21   $100050, $100054  mailbox data and status
+    //   k 22       $100058           LED change: bits 3..0 on, 7..4 off, 11..8 toggle
     //   k 24..31   $100060..$10007C  locks 0..7
     //   k 80..94   $100140..$100178  GPIO set, clear and toggle (no read-modify-write)
     //   k 192..    $100300..$1003BC  pin owners, $1003C0..$1003FC peripheral owners
@@ -581,6 +586,8 @@ module forth_system #(
                     3'd4: rgb <= mem_wdata[5:0];
                     default: ;
                 endcase
+            if (io_ledc)
+                led <= ((led | mem_wdata[3:0]) & ~mem_wdata[7:4]) ^ mem_wdata[11:8];
             if (io_gpio)
                 case (io_k[1:0])
                     2'd1: pin_out[io_bit0 +: 16] <= mem_wdata[15:0];
@@ -625,6 +632,8 @@ module forth_system #(
             io_rdata <= !ut_taken[un] ? 32'd0 : ut_core[un] == owner ? 32'd1 : 32'd2;
         else if (io_hi)
             io_rdata <= 32'd0;
+        else if (io_ledc)
+            io_rdata <= {28'd0, led};
         else if (io_mail)
             case (io_k[1:0])
                 2'd0:    io_rdata <= owner ? mb1_dout : mb0_dout;

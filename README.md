@@ -22,7 +22,7 @@ step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
   locks (`lock try-lock unlock`) and 4 KB of shared memory (`shared`); `core#` tells a
   program where it runs. Pins and peripherals belong to the core that opened them, and
   restarting one core resets only what it held while the other keeps running.
-- A **Forth kernel** of 430 words, written in Forth and cross-compiled on the PC: the
+- A **Forth kernel** of 439 words, written in Forth and cross-compiled on the PC: the
   interpreter and compiler, the Forth-2012 floating-point words (literals like `1.5e-3`,
   `f. fs. fe.`, `fsin fcos ftan fatan2 fasin facos fexp fln flog f** fsqrt`…), correctly
   rounded number conversion, the board's LEDs, RGB LEDs, buttons and switches, 36 shield

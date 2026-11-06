@@ -14,11 +14,11 @@
 
 .EXAMPLE
     .\tools\Install-App.ps1
-    .\tools\Install-App.ps1 -Version 4.1 -InstallDir D:\Apps\ZYNQ-DualCore-FORTH32
+    .\tools\Install-App.ps1 -Version 4.2 -InstallDir D:\Apps\ZYNQ-DualCore-FORTH32
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '4.1',
+    [string]$Version = '4.2',
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'ZYNQ-DualCore-FORTH32\app'),
     [string]$Exe
 )

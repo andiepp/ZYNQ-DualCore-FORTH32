@@ -257,7 +257,7 @@ been quiet for 200 ms before its first frame, which leaves Forth's start-up outp
 terminal. A stray `0xA1` typed into a terminal only shows a `!`.
 
 In HASE mode the node has the type of the 16-bit Forth-Lab node, `AE.07.30.80`, and reports
-its firmware as major.minor (4.1). Its frames and device functions are those of HASE-Lab's Forth-Lab family, so
+its firmware as major.minor (4.2). Its frames and device functions are those of HASE-Lab's Forth-Lab family, so
 today's Forth-Lab panel works with it unchanged: 0x15 (version), 0x30–0x33 (status, restart,
 input, output), 0x40–0x42 (dictionary and data stack), 0x43 (the registers of the `board`
 request, binary, 84 bytes), 0x44 (the pattern generator, the `pg` line's two words as u32,

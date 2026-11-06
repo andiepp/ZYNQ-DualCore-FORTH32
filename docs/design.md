@@ -650,6 +650,7 @@ the instruction consumes the value, and belongs to that instruction's core.
 | `$10001C` | the core number: 0 or 1 (0 on the single-core 3.x) | – |
 | `$100050` | the oldest word sent to this core (taken by the read; 0 if none) | send a word to the other core (lost if its mailbox is full) |
 | `$100054` | bit 0 = a word is waiting, bit 1 = room to send | – |
+| `$100058` | LD0..LD3 (as `$100008`) | LED change, in one clock: bits 3..0 switch LEDs on, bits 7..4 off, bits 11..8 toggle them (no read-modify-write, so both cores' changes are kept) |
 | `$100060 + 4n` | lock n (0..7): 0 free, 1 held by this core, 2 by the other | 1 = take it if free, 0 = release it (holder only) |
 | `$101000..$101FFF` | shared RAM, 4 KB, words and bytes | the same |
 | `$100140 + 16p` | – | port p: +0 set latch bits, +4 clear latch bits, +8 set direction bits, +12 clear direction bits (no read-modify-write) |
@@ -1067,8 +1068,8 @@ its own dictionary table (`dicts[]`). HASE-Lab's Forth-Lab family reads core 1 f
 
 ## 7 The Forth kernel
 
-The kernel is one Forth source file, `forth/kernel.fs` (926 lines). It compiles to a
-24,876-byte image with 430 words, and everything a user meets is in it: the interpreter, the
+The kernel is one Forth source file, `forth/kernel.fs` (946 lines). It compiles to a
+25,424-byte image with 439 words, and everything a user meets is in it: the interpreter, the
 compiler, number and float conversion, the elementary functions, the board words and the
 words for the two cores. Both cores get the same image; `core#` (`$10001C`) tells a program
 which one it runs on.
@@ -1423,6 +1424,8 @@ Every board word is a few accesses to the I/O registers:
 
 ```forth
 : led! ( n -- ) $100008 ! ;
+: led-mask ( n -- mask ) dup 4 u< 0= if ."  bad led" cr abort then 1 swap lshift ;
+: led-toggle ( n -- ) led-mask 8 lshift $100058 ! ;   \ led-on: no shift, led-off: 4
 : ms ( n -- ) ms@ + begin dup ms@ - 0< until drop ;
 : pin ( n -- mask a )
   dup 0 20 within over 26 48 within or 0= if ."  bad pin" cr abort then

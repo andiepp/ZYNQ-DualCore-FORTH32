@@ -3,6 +3,22 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
+## 4.2 — 2026-11-06
+
+- **One LED at a time:** `led-on`, `led-off` and `led-toggle` ( n -- ) switch LED n (0..3,
+  LD0..LD3) and leave the others as they are; `led-mask` ( n -- mask ) gives its bit; a number
+  outside 0..3 aborts with ` bad led` (after MAX1000-FORTH 1.2's words, with the Arty's LED
+  numbers).
+- **LED change register** `$100058`: one store switches LEDs on (bits 3..0), off (bits 7..4) and
+  toggles them (bits 11..8) in one clock, so the two cores never lose each other's LED changes.
+  The three words use it. New bitstream; the firmware reports 4.2. Checked on the board: a
+  million `led-toggle`s from each core at once lose nothing, where `led@ … xor led!` lost one.
+- **Manual:** the contents list every section as a link (`tools/manual_contents.py`, run by
+  `Build-Release.ps1`); chapter 1's sections are numbered 1.1..1.4; LED words in 5.10, the error
+  table, examples in 6.1 and 6.5. design.md: the register in the I/O map (5.3).
+- Kernel 439 words, 25,424 bytes. Tests: `sim/leds.txt` and the two-core `sim/dual_leds0/1.txt`
+  (ISS and RTL); the app's simulated board knows the four words.
+
 ## 4.1 — 2026-11-05
 
 - **The HASE node serves core 1** (HASE-Lab ADR-0094): each MCNF function that concerns one

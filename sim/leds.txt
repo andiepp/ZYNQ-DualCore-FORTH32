@@ -1,0 +1,10 @@
+0 led!  0 led-on  2 led-on  led@ .
+2 led-off  led@ .
+3 led-toggle  led@ .  3 led-toggle  led@ .
+15 led!  1 led-off  led@ .
+0 led-mask .  3 led-mask .
+4 led-on
+-1 led-toggle
+led@ .  $100058 @ .
+$FFF $100058 !  led@ .
+$030 $100058 !  led@ .

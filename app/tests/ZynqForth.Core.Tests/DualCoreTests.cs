@@ -225,6 +225,21 @@ public sealed class SimulatedBoardTests : IDisposable
     }
 
     [Fact]
+    public async Task SingleLedWordsChangeOneSharedLed()
+    {
+        await client.VersionAsync();
+        await client.MultiplexAsync(true);
+        await client.SendLineAsync("5 led! 1 led-on 3 led-mask .", 0);
+        await WaitForAsync(() => Text(0).Contains("8  ok", StringComparison.Ordinal));
+        await client.SendLineAsync("0 led-off 3 led-toggle led@ .", 1);
+        await WaitForAsync(() => Text(1).Contains("14  ok", StringComparison.Ordinal));   // the LEDs are shared
+        Assert.Equal(14, (await client.BoardAsync()).Leds);
+        await client.SendLineAsync("4 led-on", 0);
+        await WaitForAsync(() => Text(0).Contains("bad led", StringComparison.Ordinal));
+        Assert.Equal(14, (await client.BoardAsync()).Leds);
+    }
+
+    [Fact]
     public async Task EachCoreHasItsOwnSavedSource()
     {
         await client.VersionAsync();

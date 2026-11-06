@@ -354,7 +354,7 @@ internal sealed class SimCore
         "+", "-", "*", "/", "mod", "negate", "abs", "max", "min", "=", "<", ">", "0=", "and", "or", "xor", "invert",
         "dup", "drop", "swap", "over", "rot", "nip", "depth", ".", "u.", ".s", "emit", "cr", "space", "words",
         "f+", "f-", "f*", "f/", "fsqrt", "fdup", "fdrop", "fswap", "f.", "f.s", "s>f", "f>s", "fdepth",
-        "led!", "led@", "core#", "send", "receive", "mail?", "try-lock", "lock", "unlock",
+        "led!", "led@", "led-on", "led-off", "led-toggle", "led-mask", "core#", "send", "receive", "mail?", "try-lock", "lock", "unlock",
     ];
 
     private readonly SimulatedBoard board;
@@ -737,6 +737,11 @@ internal sealed class SimCore
             case "fdepth": Push(floats.Count); break;
             case "led!": board.Leds = Pop() & 0xF; break;
             case "led@": Push(board.Leds); break;
+            // one LED by its number 0..3, as the kernel's words (the hardware's LED change register)
+            case "led-on": board.Leds |= LedMask(Pop()); break;
+            case "led-off": board.Leds &= ~LedMask(Pop()); break;
+            case "led-toggle": board.Leds ^= LedMask(Pop()); break;
+            case "led-mask": Push(LedMask(Pop())); break;
             case "core#": Push(Index); break;
             // as in the kernel: send ( x -- ) to the other core, receive ( -- x ), mail? ( -- f );
             // the simulator cannot wait, so a full or empty mailbox and a held lock abort instead
@@ -791,6 +796,8 @@ internal sealed class SimCore
         board.Locks[n] = Index;
         return true;
     }
+
+    private static int LedMask(int n) => (uint)n < 4 ? 1 << n : throw new SimAbort("bad led");
 
     private sealed class SimAbort(string message) : Exception(message);
 }

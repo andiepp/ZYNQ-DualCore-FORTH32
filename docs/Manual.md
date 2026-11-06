@@ -104,23 +104,29 @@ Contents:
 
 - A Digilent **Arty Z7-20** (the -10 has a smaller FPGA and is not supported) and a micro-USB
   cable to the port marked PROG/UART (J14).
-- On Windows, the **ZYNQ-DualCore-FORTH32 app**. Any other system can use a terminal program.
+- On Windows, the **ZYNQ-DualCore-FORTH32 app**: `ZynqDualForth32.exe` in the release zip
+  (it runs as it is), or `app\ZynqDualForth32.exe` in the repository downloaded with **Code →
+  Download ZIP** (the small build: it needs Microsoft's free .NET 10 Desktop Runtime, which
+  Windows offers on the first start). Any other system can use a terminal program.
 - To write ZYNQ-DualCore-FORTH32 into the board's flash: the AMD/Xilinx **Vitis** or **Vivado
   Lab** tools (for `program_flash`), once.
 
 ### 1.2 Put ZYNQ-DualCore-FORTH32 on the board
 
-Paths in this manual are relative to the **ZYNQ-DualCore-FORTH32 folder**: the repository, or
-the folder of an unpacked release. Commands run in that folder.
+Paths in this manual are relative to the **ZYNQ-DualCore-FORTH32 folder**: the repository
+(cloned, or downloaded from GitHub with **Code → Download ZIP** and unpacked), or the folder of
+an unpacked release. Commands run in that folder. Both downloads carry the latest release's
+firmware in `firmware\`.
 
 The board starts ZYNQ-DualCore-FORTH32 from its QSPI flash when jumper **JP4** is on **QSPI**.
 To write the flash once:
 
 1. Set JP4 to **JTAG** and switch the board on.
 2. Run the flash script. It writes the boot image and verifies it:
-   - from a release: `.\firmware\program_flash.ps1` (it writes `firmware\BOOT.bin`);
-   - from the repository, after building (README): `.\sw\program_flash.ps1` (it writes
-     `build\boot\BOOT.bin`).
+   - from a release or the downloaded repository: `.\firmware\program_flash.ps1` (it writes
+     `firmware\BOOT.bin`);
+   - from the repository, after building it yourself (README): `.\sw\program_flash.ps1` (it
+     writes `build\boot\BOOT.bin`).
 3. Set JP4 to **QSPI** and switch the board off and on.
 
 The script needs `program_flash` from AMD/Xilinx Vitis 2023.2 (or Vivado Lab). It finds
@@ -219,7 +225,8 @@ IO13; the stack holds 12, 100 and -42.*
 
 ### 2.1 Connecting
 
-1. Start **ZynqDualForth32.exe** (version 4.0). It keeps its preferences, and the copy of
+1. Start **ZynqDualForth32.exe** (version 4.2; `app\ZynqDualForth32.exe` in a repository
+   download). It keeps its preferences, and the copy of
    this manual it opens, in `%LocalAppData%\ZYNQ-DualCore-FORTH32`, apart from those of the
    single-core and 16-bit apps, so they can all be installed side by side.
 2. Choose the board's port in the list at the top left (**↻** looks for ports again) and click

@@ -58,6 +58,33 @@ step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
 | **Amber** | **IDE light** |
 | ![Amber](docs/images/app-amber.png) | ![IDE light](docs/images/app-ide-light.png) |
 
+## Get started
+
+1. Download `ZYNQ-DualCore-FORTH32-<version>-windows-x64.zip` from the
+   [releases](https://github.com/andiepp/ZYNQ-DualCore-FORTH32/releases) (under *Assets*), or the
+   repository with **Code → Download ZIP**, and unpack it. Both have the firmware in
+   `firmware\` and the app: the release as `ZynqDualForth32.exe`, the repository as
+   `app\ZynqDualForth32.exe`.
+2. Install AMD/Xilinx **Vitis** 2023.2 or **Vivado Lab** (for its `program_flash`), once.
+3. Set jumper **JP4** to JTAG, connect the Arty Z7-20's PROG/UART port (J14), switch it on and
+   write ZYNQ-DualCore-FORTH32 into its flash; then JP4 back to QSPI and power-cycle:
+
+   ```powershell
+   .\firmware\program_flash.ps1          # finds Vitis, or: -Vitis <Vitis folder>\bin
+   ```
+
+   If PowerShell refuses the script because it came from the internet, run it as
+   `powershell -ExecutionPolicy Bypass -File .\firmware\program_flash.ps1` (for this run
+   only), or unblock the unpacked folder once with
+   `Get-ChildItem -Recurse | Unblock-File`.
+
+4. Start the app, choose the board's port and **Connect** (or a terminal at **115200 8N1** and
+   Enter). The app from the release zip runs as it is; the one from Code → Download ZIP is the
+   small build and needs Microsoft's free .NET 10 Desktop Runtime (Windows offers it on the
+   first start). Port **SIM** tries the app without a board.
+
+The [user manual](docs/Manual.md) ([PDF](docs/Manual.pdf)) has the details, chapter 1 first.
+
 ## Documentation
 
 - [docs/Manual.md](docs/Manual.md) — the user manual: getting started, the app, the
@@ -176,7 +203,8 @@ python tools/test_float_words.py
 
 `.\tools\Install-App.ps1` installs the released app (from `dist\publish`, or downloaded from
 the GitHub release) for the current user and puts a **ZYNQ-DualCore-FORTH32** shortcut on the
-desktop. A development build runs from
+desktop. `tools\Build-Release.ps1` also refreshes the repository's `firmware\` and
+`app\ZynqDualForth32.exe`, so that **Code → Download ZIP** carries the latest release. A development build runs from
 `app\src\ZynqForth\bin\Debug\net10.0-windows\ZynqDualForth32.exe` (`--connect SIM` for the
 simulated board). It keeps its settings in `%LocalAppData%\ZYNQ-DualCore-FORTH32`, apart from
 the single-core and 16-bit apps'. Its skins are generated from one colour table: edit

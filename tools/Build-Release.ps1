@@ -61,6 +61,17 @@ if ($LASTEXITCODE) { throw 'publish failed' }
 Copy-Item (Join-Path $dist 'publish\ZynqDualForth32.exe') $stage
 
 Copy-Item $boot, $fsbl, (Join-Path $root 'sw\program_flash.ps1') $firmware
+
+# the repository's own copies, so that GitHub's "Code > Download ZIP" works as well:
+# firmware\ (BOOT.bin, fsbl.elf, program_flash.ps1) and app\ZynqDualForth32.exe in its small
+# form, which needs the .NET 10 Desktop Runtime (the release zip gets the self-contained one)
+Copy-Item $boot, $fsbl, (Join-Path $root 'sw\program_flash.ps1') (Join-Path $root 'firmware')
+$appFd = Join-Path $root 'build\app-fd'
+if (Test-Path $appFd) { Remove-Item -Recurse -Force $appFd }
+dotnet publish (Join-Path $root 'app\src\ZynqForth\ZynqForth.csproj') -c Release -r win-x64 --self-contained false `
+    -p:PublishSingleFile=true -p:Version="$Version.0" -o $appFd
+if ($LASTEXITCODE) { throw 'app publish (framework-dependent) failed' }
+Copy-Item (Join-Path $appFd 'ZynqDualForth32.exe') (Join-Path $root 'app\ZynqDualForth32.exe')
 Copy-Item (Join-Path $root 'docs\Manual.pdf'), (Join-Path $root 'docs\Implementation-Details.pdf'), (Join-Path $root 'docs\Protocol.md'), (Join-Path $root 'README.md'),
           (Join-Path $root 'CHANGELOG.md'), (Join-Path $root 'LICENSE') $stage
 Copy-Item -Recurse (Join-Path $root 'examples') $stage

@@ -67,7 +67,8 @@ step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
    `app\ZynqDualForth32.exe`.
 2. Install AMD/Xilinx **Vitis** 2023.2 or **Vivado Lab** (for its `program_flash`), once.
 3. Set jumper **JP4** to JTAG, connect the Arty Z7-20's PROG/UART port (J14), switch it on and
-   write ZYNQ-DualCore-FORTH32 into its flash; then JP4 back to QSPI and power-cycle:
+   write ZYNQ-DualCore-FORTH32 into its flash (about 2 to 3 minutes; the script shows the
+   erase, program and verify steps as they go); then JP4 back to QSPI and power-cycle:
 
    ```powershell
    .\firmware\program_flash.ps1          # finds Vitis, or: -Vitis <Vitis folder>\bin
@@ -78,10 +79,28 @@ step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
    only), or unblock the unpacked folder once with
    `Get-ChildItem -Recurse | Unblock-File`.
 
-4. Start the app, choose the board's port and **Connect** (or a terminal at **115200 8N1** and
-   Enter). The app from the release zip runs as it is; the one from Code → Download ZIP is the
-   small build and needs Microsoft's free .NET 10 Desktop Runtime (Windows offers it on the
-   first start). Port **SIM** tries the app without a board.
+4. Start the **ZYNQ-DualCore-FORTH32 app**: `app\ZynqDualForth32.exe` from Code → Download ZIP
+   (the small build: it needs Microsoft's free .NET 10 Desktop Runtime, which Windows offers on
+   the first start), or `ZynqDualForth32.exe` from the release zip (it runs as it is). No
+   installation; `tools\Install-App.ps1` adds a desktop shortcut if you want one.
+   - Choose the board's port at the top left (the Arty's USB serial port, a COM port) and click
+     **Connect**. The line beside it shows the firmware, and the terminal Forth's ` ok`.
+   - Type Forth in the terminal's input line, or write it in the editor and press **Run all**
+     (Ctrl+F5). **Core 0** / **Core 1** (Ctrl+1 / Ctrl+2) switch between the two Forths, each
+     with its own terminal, editor, stacks, dictionary and saved source.
+   - The app also shows the board live (LEDs, buttons, switches, pins, analog inputs) and
+     edits patterns for the pattern generator. **Manual** (F1) opens the user manual.
+   - Port **SIM** is a simulated board, for trying the app without one.
+
+   Or use any **terminal program** (PuTTY, Tera Term) at **115200 8N1** on the same port: press
+   Enter and type Forth. It talks to core 0.
+
+   ```
+   HF32 Forth on Arty Z7-20
+   2 3 + . 5  ok
+   1 led-on  3 led-toggle  ok
+   1e 3e f/ f. 0.3333333  ok
+   ```
 
 The [user manual](docs/Manual.md) ([PDF](docs/Manual.pdf)) has the details, chapter 1 first.
 

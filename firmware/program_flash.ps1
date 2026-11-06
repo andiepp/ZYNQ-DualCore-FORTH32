@@ -32,11 +32,39 @@ $tool = Join-Path $Vitis 'program_flash.bat'
 if (-not (Test-Path $tool)) { throw "missing $tool, pass -Vitis <folder with program_flash.bat>" }
 
 # S25FL128S, one chip in quad mode; the image starts at 0, the saved Forth sources sit at 0xFE0000 (core 0) and 0xFD0000 (core 1)
-# program_flash exits 0 even when it fails, so its output is checked as well
-$lines = & $tool -f $Image -offset 0 -flash_type qspi-x4-single -fsbl $Fsbl -verify 2>&1 |
-    ForEach-Object { "$_" }
-$lines | Where-Object { $_ -notmatch '^ECHO ' } | Write-Host
-if ($LASTEXITCODE -or ($lines -match '^ERROR|Operation Failed')) {
-    throw 'program_flash failed (is JP4 on JTAG?)'
+# program_flash exits 0 even when it fails, so its output is checked as well. It prints
+# thousands of lines; the script shows the phases and their percentages as they come and keeps
+# the whole output in a log file.
+$log = Join-Path $env:TEMP 'program_flash.log'
+Write-Host ("FLASH: writing {0} ({1:N1} MB) to the QSPI flash and verifying it." -f `
+    (Split-Path $Image -Leaf), ((Get-Item $Image).Length / 1MB))
+Write-Host 'FLASH: this takes about 2 to 3 minutes; keep the board on and JP4 on JTAG until it is done.'
+$started = Get-Date
+$phase = 'start'
+$shown = ''
+$lines = New-Object System.Collections.Generic.List[string]
+# a line on stderr is output like any other, not a stop: the output decides below
+$ErrorActionPreference = 'Continue'
+& $tool -f $Image -offset 0 -flash_type qspi-x4-single -fsbl $Fsbl -verify 2>&1 | ForEach-Object {
+    $line = "$_"
+    $lines.Add($line)
+    $step = $null
+    if ($line -match 'Retrieving Flash info') { $step = 'connecting to the board' }
+    elseif ($line -match 'Performing (\w+) Operation') { $phase = $Matches[1].ToLower(); $step = "$phase 0%" }
+    elseif ($line -match '(\w+) Operation successful') { $step = "$($Matches[1].ToLower()) done" }
+    elseif ($line -match '^ERROR|Operation Failed') { $step = $line }
+    elseif ($line -match '(?:^|\s|>)(\d{1,3})%') { $step = "$phase $($Matches[1])%" }
+    if ($step -and $step -ne $shown) {
+        $shown = $step
+        Write-Host ("  {0,4:N0} s  {1}" -f ((Get-Date) - $started).TotalSeconds, $step)
+    }
 }
-Write-Host 'FLASH: BOOT.bin written and verified; set JP4 to QSPI and power-cycle the board'
+$exit = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+$lines | Set-Content -Encoding UTF8 $log
+if ($exit -or ($lines -match '^ERROR|Operation Failed')) {
+    $lines | Where-Object { $_ -notmatch '^ECHO ' } | Select-Object -Last 30 | Write-Host
+    throw "program_flash failed (is JP4 on JTAG?); the whole output is in $log"
+}
+Write-Host ("FLASH: BOOT.bin written and verified in {0:N0} s; set JP4 to QSPI and power-cycle the board" -f `
+    ((Get-Date) - $started).TotalSeconds)

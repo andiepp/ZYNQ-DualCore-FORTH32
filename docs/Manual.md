@@ -122,7 +122,8 @@ The board starts ZYNQ-DualCore-FORTH32 from its QSPI flash when jumper **JP4** i
 To write the flash once:
 
 1. Set JP4 to **JTAG** and switch the board on.
-2. Run the flash script. It writes the boot image and verifies it:
+2. Run the flash script. It writes the boot image and verifies it, which takes about 2 to 3
+   minutes; it shows the erase, program and verify steps and their progress as they go:
    - from a release or the downloaded repository: `.\firmware\program_flash.ps1` (it writes
      `firmware\BOOT.bin`);
    - from the repository, after building it yourself (README): `.\sw\program_flash.ps1` (it

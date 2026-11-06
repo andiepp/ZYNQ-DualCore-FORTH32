@@ -1,16 +1,41 @@
-# ZYNQ-DualCore-FORTH32
+# ZYNQ FPGA Dual-Core 32-bit FORTH
 
-Two 32-bit interactive Forths with hardware floating point, each on its own HF32 CPU in the
-FPGA of a Digilent **Arty Z7-20**, with a Windows app to program both.
+**Two interactive 32-bit Forths with floating point on the Digilent Arty Z7-20**
 
-ZYNQ-DualCore-FORTH32 4.0 continues [ZYNQ-FPGA-FORTH32](https://github.com/andiepp/ZYNQ-FPGA-FORTH32)
-3.1 (one core) with a **second HF32 core** and a **hardware divider**. Each core runs a
-Forth of its own; they share the board's I/O and work together through mailboxes, locks and
-a shared memory. Sources written for 3.1, or for the 16-bit
-[ZYNQ-FORTH](https://github.com/andiepp/ZYNQ-FORTH), run on either core. How it was built,
-step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
+![ZYNQ FPGA Dual-Core 32-bit FORTH: the hardware in the Zynq FPGA and the IDE](docs/images/project-overview.png)
 
-![The app in the Lab panel skin](docs/images/app-lab-panel.png)
+ZYNQ FPGA Dual-Core 32-bit FORTH puts two complete Forth systems into the FPGA of the AMD
+Zynq-7020 on the Digilent Arty Z7-20. Each runs on its own **HF32**, a 32-bit stack machine
+that executes one Forth primitive per clock at 50 MHz, with a hardware floating-point unit
+(IEEE single precision), a divider and 128 KB of RAM. The two cores work side by side and
+together: mailboxes, locks and a shared memory connect them, and every pin and peripheral
+belongs to the core that opened it. The Zynq's ARM core only loads both kernels and carries
+both terminals over the board's USB serial port; Forth itself runs on its own CPUs, and the
+board starts straight into it.
+
+**Why Forth?** Forth is interactive: type a line and it runs at once, with no
+compile-and-flash cycle. It is fast, small and easy to learn. That makes it ideal for trying
+out and testing chips and circuits connected to the board. Two UARTs, two SPI masters, an I²C
+master, four PWM channels and a DDS generator can each be put on any of the 36 shield pins,
+and a 16-channel pattern generator plays digital sequences in 5 ns steps on the Pmod headers.
+You can talk to a sensor, set up a clock chip or drive a bus in a few typed lines, and work
+out the result in floating point on the spot. With two cores, one can run a measurement or a
+control loop while you keep typing on the other. One Forth program per core can be saved in
+the board's flash, so it runs at every start without a PC.
+
+**IDE included.** The ZYNQ-DualCore-FORTH32 app for Windows switches between the two cores,
+each with its own source editor, terminal, data and float stack, dictionary and saved
+program. It also shows a live view of the board (LEDs, buttons, switches, pins, analog
+inputs) and edits patterns for the pattern generator as a timing diagram. F1 opens the full
+user manual.
+
+Open source (MIT): RTL, Forth kernel, cross-compiler, simulator, ARM firmware and app, with a
+user manual and implementation details. It continues
+[ZYNQ-FPGA-FORTH32](https://github.com/andiepp/ZYNQ-FPGA-FORTH32) (one core); sources written
+for it, or for the 16-bit [ZYNQ-FORTH](https://github.com/andiepp/ZYNQ-FORTH), run on either
+core. How it was built, step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan.md).
+
+## Features
 
 - **Two HF32 cores**, 32-bit dual-stack CPUs in the Zynq's programmable logic whose
   instructions are Forth primitives: one instruction per clock at 50 MHz, 128 KB of RAM

@@ -17,11 +17,11 @@
          ZYNQ-DualCore-FORTH32-firmware-<version>.zip      BOOT.bin, fsbl.elf and the flash script
 
 .EXAMPLE
-    .\tools\Build-Release.ps1
+    .\tools\Build-Release.ps1 -Version 4.2.1
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '4.0',
+    [string]$Version = '4.2.1',
     [switch]$SkipTests,
     [switch]$SkipPdf
 )

@@ -227,7 +227,7 @@ IO13; the stack holds 12, 100 and -42.*
 
 ### 2.1 Connecting
 
-1. Start **ZynqDualForth32.exe** (version 4.2; `app\ZynqDualForth32.exe` in a repository
+1. Start **ZynqDualForth32.exe** (version 4.2.1; `app\ZynqDualForth32.exe` in a repository
    download). It keeps its preferences, and the copy of
    this manual it opens, in `%LocalAppData%\ZYNQ-DualCore-FORTH32`, apart from those of the
    single-core and 16-bit apps, so they can all be installed side by side.

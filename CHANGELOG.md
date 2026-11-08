@@ -3,7 +3,7 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
-## Unreleased
+## 4.2.1 — 2026-11-08
 
 - **Help** in the app: a window with every Forth word of the kernel (439 entries), opened
   with the Help button beside Manual or F2 (on the word at the cursor in the editor or the

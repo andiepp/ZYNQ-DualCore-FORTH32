@@ -65,6 +65,14 @@ public partial class MainWindow : Window, IUserDialogs
         InputBindings.Add(new KeyBinding(viewModel.SelectCoreCommand, Key.D1, ModifierKeys.Control) { CommandParameter = 0 });
         InputBindings.Add(new KeyBinding(viewModel.SelectCoreCommand, Key.D2, ModifierKeys.Control) { CommandParameter = 1 });
         InputBindings.Add(new KeyBinding(new RelayCommand(OpenManual), Key.F1, ModifierKeys.None));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => OpenHelp(WordAtCaret())), Key.F2, ModifierKeys.None));
+        // the hints of the typing boxes on mouse hover only, not whenever they get the focus
+        ToolTipService.SetShowsToolTipOnKeyboardFocus(InputBox, false);
+        foreach (TextBox editor in editorBoxes)
+        {
+            ToolTipService.SetShowsToolTipOnKeyboardFocus(editor, false);
+        }
+
         Loaded += (_, _) => InputBox.Focus();
         SourceInitialized += (_, _) => UpdateTitleBar();
         Skins.Changed += UpdateTitleBar;
@@ -148,6 +156,66 @@ public partial class MainWindow : Window, IUserDialogs
     }
 
     private void Manual_Click(object sender, RoutedEventArgs e) => OpenManual();
+
+    private HelpWindow? helpWindow;
+
+    private void Help_Click(object sender, RoutedEventArgs e) => OpenHelp(WordAtCaret());
+
+    /// <summary>Opens the help window (one at a time), on a word when one is given.</summary>
+    private void OpenHelp(string? word)
+    {
+        if (helpWindow is null || !helpWindow.IsLoaded)
+        {
+            // Insert adds the word to the input line of the core shown at that moment
+            helpWindow = new HelpWindow(this, name =>
+            {
+                ViewModel.SelectedCore.InputLine = (ViewModel.SelectedCore.InputLine + " " + name).TrimStart();
+                InputBox.CaretIndex = InputBox.Text.Length;
+            });
+            helpWindow.Closed += (_, _) => helpWindow = null;
+            helpWindow.Show();
+        }
+
+        if (!string.IsNullOrEmpty(word))
+        {
+            helpWindow.ShowWord(word);
+            if (HelpWindow.Help.Find(word) is null &&
+                ViewModel.SelectedCore.Words.Cast<ForthWord>().Any(w => w.Name.Equals(word, StringComparison.OrdinalIgnoreCase)))
+            {
+                ViewModel.ShowMessage($"{word} is your own word: it has no help.");
+            }
+        }
+        else
+        {
+            helpWindow.Activate();
+        }
+    }
+
+    /// <summary>The word under the caret of the editor or the terminal's input line, if one has the focus.</summary>
+    private string? WordAtCaret()
+    {
+        TextBox? box = Keyboard.FocusedElement as TextBox;
+        if (box != EditorBox && box != InputBox)
+        {
+            return null;
+        }
+
+        string text = box!.Text;
+        int at = Math.Min(box.CaretIndex, text.Length);
+        int start = at, end = at;
+        while (start > 0 && !char.IsWhiteSpace(text[start - 1]))
+        {
+            start--;
+        }
+
+        while (end < text.Length && !char.IsWhiteSpace(text[end]))
+        {
+            end++;
+        }
+
+        string word = text[start..end];
+        return word.Length > 0 ? word : null;
+    }
 
     /// <summary>
     /// Opens the manual built into the app in the PDF viewer. It is written to

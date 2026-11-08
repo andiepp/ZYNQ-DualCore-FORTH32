@@ -1,0 +1,8955 @@
+[
+{
+"name": "dup",
+"stack": "( x -- x x )",
+"text": "Copy the top item.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": [
+": sq dup * ;",
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;",
+": colours 8 1 do i dup 3 lshift or rgb! 400 ms loop 0 rgb! ;"
+]
+},
+{
+"name": "drop",
+"stack": "( x -- )",
+"text": "Remove the top item.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": [
+"pin-ss low $9F 0 spi-xfer drop 0 0 spi-xfer . pin-ss high   \\ e.g. a flash's ID",
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;"
+]
+},
+{
+"name": "swap",
+"stack": "( x1 x2 -- x2 x1 )",
+"text": "Exchange the top two items.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+"wait-btn ms@ swap - 0 led!",
+": level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;"
+]
+},
+{
+"name": "over",
+"stack": "( x1 x2 -- x1 x2 x1 )",
+"text": "Copy the second item to the top.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "nip",
+"stack": "( x1 x2 -- x2 )",
+"text": "Remove the second item.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "tuck",
+"stack": "( x1 x2 -- x2 x1 x2 )",
+"text": "Copy the top item below the second.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "rot",
+"stack": "( x1 x2 x3 -- x2 x3 x1 )",
+"text": "Rotate the third item to the top.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": [
+"1 2 3 rot .s <3> 2 3 1  ok"
+]
+},
+{
+"name": "-rot",
+"stack": "( x1 x2 x3 -- x3 x1 x2 )",
+"text": "Rotate the top item to third place.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"2dup",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "2dup",
+"stack": "( x1 x2 -- x1 x2 x1 x2 )",
+"text": "Copy the top two items.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2drop",
+"?dup",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "2drop",
+"stack": "( x1 x2 -- )",
+"text": "Remove the top two items.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"?dup",
+"depth",
+".s"
+],
+"examples": [
+": blink ( n -- ) begin dup led-toggle 250 ms key? until key 2drop ;"
+]
+},
+{
+"name": "?dup",
+"stack": "( x -- x x | 0 )",
+"text": "Copy the top item only if it is not zero.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"depth",
+".s"
+],
+"examples": []
+},
+{
+"name": "depth",
+"stack": "( -- n )",
+"text": "Number of items on the data stack, before depth itself pushes.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+".s"
+],
+"examples": []
+},
+{
+"name": ".s",
+"stack": "( -- )",
+"text": "Show the stack without changing it: <3> 1 2 3, with the depth and the top on the right.",
+"section": "5.1 Data stack",
+"area": "Data stack",
+"related": [
+"dup",
+"drop",
+"swap",
+"over",
+"nip",
+"tuck",
+"rot",
+"-rot",
+"2dup",
+"2drop",
+"?dup",
+"depth"
+],
+"examples": [
+"1 2 3 rot .s <3> 2 3 1  ok"
+]
+},
+{
+"name": ">r",
+"stack": "( x -- ) R: ( -- x )",
+"text": "Move the top item to the return stack.",
+"section": "5.2 Return stack",
+"area": "Return stack",
+"related": [
+"r>",
+"r@"
+],
+"examples": [
+">r fn !  fover f- r@ s>f f/ h f! x0 f!"
+]
+},
+{
+"name": "r>",
+"stack": "( -- x ) R: ( x -- )",
+"text": "Move the top of the return stack back.",
+"section": "5.2 Return stack",
+"area": "Return stack",
+"related": [
+">r",
+"r@"
+],
+"examples": [
+"r> drop h f@ f* 3e f/ ;"
+]
+},
+{
+"name": "r@",
+"stack": "( -- x ) R: ( x -- x )",
+"text": "Copy the top of the return stack.",
+"section": "5.2 Return stack",
+"area": "Return stack",
+"related": [
+">r",
+"r>"
+],
+"examples": [
+">r fn !  fover f- r@ s>f f/ h f! x0 f!",
+"0 f(i) r@ f(i) f+",
+"r@ 1 do i f(i) i weight f* f+ loop"
+]
+},
+{
+"name": "+",
+"stack": "( n1 n2 -- n3 )",
+"text": "Sum.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": [
+"table 2 cells + ? 4  ok",
+"create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f. 4.  ok",
+": five [ 2 3 + ] literal ;  ok"
+]
+},
+{
+"name": "-",
+"stack": "( n1 n2 -- n3 )",
+"text": "Difference n1 − n2.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+"wait-btn ms@ swap - 0 led!"
+]
+},
+{
+"name": "*",
+"stack": "( n1 n2 -- n3 )",
+"text": "Product, low 32 bits; one instruction (hardware multiplier, 3 clocks).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": [
+": sq dup * ;",
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;",
+": table 3 1 do 3 1 do j i * . loop loop ;"
+]
+},
+{
+"name": "/",
+"stack": "( n1 n2 -- n3 )",
+"text": "Quotient, rounded toward zero: -7 2 / gives −3.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": [
+": level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;"
+]
+},
+{
+"name": "mod",
+"stack": "( n1 n2 -- n3 )",
+"text": "Remainder, with the sign of n1: -7 2 mod gives −1.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "/mod",
+"stack": "( n1 n2 -- rem quot )",
+"text": "Remainder and quotient (symmetric division).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "u/mod",
+"stack": "( u1 u2 -- rem quot )",
+"text": "Unsigned division: -7 2 u/mod gives 1 2147483644.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "*/",
+"stack": "( n1 n2 n3 -- n4 )",
+"text": "n1 × n2 / n3 with a 64-bit intermediate product, so the product may exceed 32 bits: 100000 100000 1000 */ gives 10000000. Rounds toward zero.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "um*",
+"stack": "( u1 u2 -- ud )",
+"text": "Full 64-bit unsigned product as two cells, the high cell on top: -1 -1 um* gives 1 −2 (4294967294).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um/mod",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "um/mod",
+"stack": "( ud u -- rem quot )",
+"text": "Divide a 64-bit unsigned number by u. The quotient must fit in 32 bits (high cell < u).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"(um/mod)",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "(um/mod)",
+"stack": "( ud u -- quot )",
+"text": "The divide instruction itself: the quotient; the remainder stays in the divider for (urem).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(urem)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "(urem)",
+"stack": "( -- rem )",
+"text": "The remainder of the last (um/mod). Use it directly after it.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"s>d"
+],
+"examples": []
+},
+{
+"name": "s>d",
+"stack": "( n -- d )",
+"text": "Extend a number to a double number with the same value: -5 s>d gives −5 −1.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "dnegate",
+"stack": "( d -- -d )",
+"text": "Change the sign of a double number.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "1+",
+"stack": "( n -- n+1 )",
+"text": "Add one.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": [
+": sq sq 1+ ;   \\ the inner sq is the old one",
+": delay sw@ 1+ 100 * ms ;",
+": bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;   \\ on both cores"
+]
+},
+{
+"name": "1-",
+"stack": "( n -- n-1 )",
+"text": "Subtract one.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": [
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;",
+": level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;"
+]
+},
+{
+"name": "2*",
+"stack": "( n -- n*2 )",
+"text": "Double.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "2/",
+"stack": "( n -- n/2 )",
+"text": "Arithmetic shift right; keeps the sign (-8 2/ gives −4).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "negate",
+"stack": "( n -- -n )",
+"text": "Change the sign.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "abs",
+"stack": "( n -- u )",
+"text": "Absolute value. -2147483648 abs stays −2147483648 (as u: 2147483648).",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "min",
+"stack": "( n1 n2 -- n )",
+"text": "Smaller of two signed numbers.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "max",
+"stack": "( n1 n2 -- n )",
+"text": "Larger of two signed numbers.",
+"section": "5.3 Arithmetic",
+"area": "Arithmetic",
+"related": [
+"+",
+"-",
+"*",
+"/",
+"mod",
+"/mod",
+"u/mod",
+"*/",
+"um*",
+"um/mod",
+"(um/mod)",
+"(urem)"
+],
+"examples": []
+},
+{
+"name": "and",
+"stack": "( x1 x2 -- x3 )",
+"text": "Bitwise AND.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"or",
+"xor",
+"invert",
+"lshift",
+"rshift",
+"arshift"
+],
+"examples": [
+"5 led!   \\ LD0 and LD2 on",
+"1 led-on   \\ LD1 on as well: LD0, LD1 and LD2 are lit",
+"0 led-off   \\ LD0 off: LD1 and LD2 stay"
+]
+},
+{
+"name": "or",
+"stack": "( x1 x2 -- x3 )",
+"text": "Bitwise OR.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"xor",
+"invert",
+"lshift",
+"rshift",
+"arshift"
+],
+"examples": [
+": colours 8 1 do i dup 3 lshift or rgb! 400 ms loop 0 rgb! ;"
+]
+},
+{
+"name": "xor",
+"stack": "( x1 x2 -- x3 )",
+"text": "Bitwise exclusive OR.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"or",
+"invert",
+"lshift",
+"rshift",
+"arshift"
+],
+"examples": []
+},
+{
+"name": "invert",
+"stack": "( x -- ~x )",
+"text": "Invert all bits. Also turns a true flag into false and back.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"or",
+"xor",
+"lshift",
+"rshift",
+"arshift"
+],
+"examples": []
+},
+{
+"name": "lshift",
+"stack": "( x u -- x' )",
+"text": "Shift left by u bits; u ≥ 32 gives 0.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"or",
+"xor",
+"invert",
+"rshift",
+"arshift"
+],
+"examples": [
+": runner begin 4 0 do 1 i lshift led! delay loop key? until key drop 0 led! ;",
+": colours 8 1 do i dup 3 lshift or rgb! 400 ms loop 0 rgb! ;",
+": level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;"
+]
+},
+{
+"name": "rshift",
+"stack": "( x u -- x' )",
+"text": "Logical shift right by u bits (fills with 0); u ≥ 32 gives 0.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"or",
+"xor",
+"invert",
+"lshift",
+"arshift"
+],
+"examples": []
+},
+{
+"name": "arshift",
+"stack": "( x u -- x' )",
+"text": "Arithmetic shift right by u bits (fills with the sign bit): -8 2 arshift gives −2, while -8 2 rshift gives 1073741822.",
+"section": "5.4 Logic and shifts",
+"area": "Logic and shifts",
+"related": [
+"and",
+"or",
+"xor",
+"invert",
+"lshift",
+"rshift"
+],
+"examples": []
+},
+{
+"name": "=",
+"stack": "( x1 x2 -- f )",
+"text": "Equal.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": [
+": find3 10 0 do i 3 = if .\" found\" unloop exit then loop .\" none\" ;"
+]
+},
+{
+"name": "<>",
+"stack": "( x1 x2 -- f )",
+"text": "Not equal.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": "<",
+"stack": "( n1 n2 -- f )",
+"text": "n1 less than n2, signed.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": ">",
+"stack": "( n1 n2 -- f )",
+"text": "n1 greater than n2, signed.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": [
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;"
+]
+},
+{
+"name": "u<",
+"stack": "( u1 u2 -- f )",
+"text": "Less than, unsigned: -1 1 u< is false.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": "u>",
+"stack": "( u1 u2 -- f )",
+"text": "Greater than, unsigned.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"0=",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": "0=",
+"stack": "( x -- f )",
+"text": "x is zero; also a logical NOT.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0<>",
+"0<",
+"0>",
+"within"
+],
+"examples": [
+": wait-free begin btn@ 0= until ;",
+": count-press 1 presses +! presses @ led! begin btn0? 0= until ;",
+": watch2 begin 2 pin@ 0= 1 and led! key? until key drop 0 led! ;"
+]
+},
+{
+"name": "0<>",
+"stack": "( x -- f )",
+"text": "x is not zero.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": "0<",
+"stack": "( n -- f )",
+"text": "n is negative.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0>",
+"within"
+],
+"examples": []
+},
+{
+"name": "0>",
+"stack": "( n -- f )",
+"text": "n is positive.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"within"
+],
+"examples": []
+},
+{
+"name": "within",
+"stack": "( n lo hi -- f )",
+"text": "lo ≤ n < hi; works for signed and unsigned ranges.",
+"section": "5.5 Comparison",
+"area": "Comparison",
+"related": [
+"=",
+"<>",
+"<",
+">",
+"u<",
+"u>",
+"0=",
+"0<>",
+"0<",
+"0>"
+],
+"examples": []
+},
+{
+"name": "@",
+"stack": "( a -- x )",
+"text": "Fetch the cell at a (bits 0 and 1 of a ignored).",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": [
+"$100020 @ 255 and .   \\ read IO0..IO7 at once",
+": count-press 1 presses +! presses @ led! begin btn0? 0= until ;",
+": f(i) ( i -- ) ( F: -- y ) x(i) fn @ execute ;"
+]
+},
+{
+"name": "!",
+"stack": "( x a -- )",
+"text": "Store x at a.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": [
+"variable x  5 x !  3 x +!  x ? 8  ok",
+"255 $100028 !   \\ IO0..IO7 as outputs",
+"170 $100024 !   \\ IO1, IO3, IO5, IO7 high, the others low"
+]
+},
+{
+"name": "c@",
+"stack": "( a -- c )",
+"text": "Fetch the byte at a.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": []
+},
+{
+"name": "c!",
+"stack": "( c a -- )",
+"text": "Store the low byte of c at a.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": []
+},
+{
+"name": "+!",
+"stack": "( n a -- )",
+"text": "Add n to the cell at a.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": [
+"variable x  5 x !  3 x +!  x ? 8  ok",
+": bump 1 count +! ;",
+": count-press 1 presses +! presses @ led! begin btn0? 0= until ;"
+]
+},
+{
+"name": "?",
+"stack": "( a -- )",
+"text": "Print the cell at a, like @ ..",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"cells",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": [
+"variable x  5 x !  3 x +!  x ? 8  ok",
+"table 2 cells + ? 4  ok",
+".\" BTN0 pressed \" presses ? .\" times\" cr ;"
+]
+},
+{
+"name": "cells",
+"stack": "( n -- n*4 )",
+"text": "Size of n cells in bytes.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cell+",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": [
+"table 2 cells + ? 4  ok"
+]
+},
+{
+"name": "cell+",
+"stack": "( a -- a+4 )",
+"text": "Address of the next cell.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"aligned",
+"cmove",
+"fill"
+],
+"examples": []
+},
+{
+"name": "aligned",
+"stack": "( a -- a' )",
+"text": "Round a up to a multiple of 4.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"cmove",
+"fill"
+],
+"examples": []
+},
+{
+"name": "cmove",
+"stack": "( a1 a2 u -- )",
+"text": "Copy u bytes from a1 to a2, lowest address first.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"fill"
+],
+"examples": []
+},
+{
+"name": "fill",
+"stack": "( a u c -- )",
+"text": "Store the byte c in u bytes from a: buf 8 32 fill fills 8 bytes with spaces.",
+"section": "5.6 Memory",
+"area": "Memory",
+"related": [
+"@",
+"!",
+"c@",
+"c!",
+"+!",
+"?",
+"cells",
+"cell+",
+"aligned",
+"cmove"
+],
+"examples": []
+},
+{
+"name": "here",
+"stack": "( -- a )",
+"text": "Address of the next free byte.",
+"section": "5.7 Dictionary space",
+"area": "Dictionary space",
+"related": [
+"allot",
+"align",
+",",
+"c,"
+],
+"examples": []
+},
+{
+"name": "allot",
+"stack": "( n -- )",
+"text": "Reserve n bytes at here (a negative n gives memory back).",
+"section": "5.7 Dictionary space",
+"area": "Dictionary space",
+"related": [
+"here",
+"align",
+",",
+"c,"
+],
+"examples": [
+"create buffer 20 allot"
+]
+},
+{
+"name": "align",
+"stack": "( -- )",
+"text": "Round here up to a multiple of 4.",
+"section": "5.7 Dictionary space",
+"area": "Dictionary space",
+"related": [
+"here",
+"allot",
+",",
+"c,"
+],
+"examples": []
+},
+{
+"name": ",",
+"stack": "( x -- )",
+"text": "Align, store x at here, advance by one cell.",
+"section": "5.7 Dictionary space",
+"area": "Dictionary space",
+"related": [
+"here",
+"allot",
+"align",
+"c,"
+],
+"examples": [
+"create table 1 , 2 , 4 , 8 ,"
+]
+},
+{
+"name": "c,",
+"stack": "( c -- )",
+"text": "Store a byte at here, advance by one byte.",
+"section": "5.7 Dictionary space",
+"area": "Dictionary space",
+"related": [
+"here",
+"allot",
+"align",
+","
+],
+"examples": [
+"create msg 104 c, 105 c,   \\ \"hi\""
+]
+},
+{
+"name": "key",
+"stack": "( -- c )",
+"text": "Wait for a character from the terminal.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": [
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+": alternate ( -- )   \\ LD0 and LD1 take turns; any key stops",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;"
+]
+},
+{
+"name": "key?",
+"stack": "( -- f )",
+"text": "True if a character is waiting (does not take it).",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": [
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;",
+": runner begin 4 0 do 1 i lshift led! delay loop key? until key drop 0 led! ;"
+]
+},
+{
+"name": "emit",
+"stack": "( c -- )",
+"text": "Send a character (waits while the send FIFO is full).",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": [
+"65 0 uart-emit  1 uart-key emit A  ok",
+"msg 2 1 uart-type  0 uart-key emit 0 uart-key emit hi ok"
+]
+},
+{
+"name": "cr",
+"stack": "( -- )",
+"text": "New line (sends CR and LF).",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": [
+": hello .\" Hello, Arty!\" cr ;",
+".\" wait for the LEDs...\" cr",
+".\" reaction time \" . .\" ms\" cr"
+]
+},
+{
+"name": "space",
+"stack": "( -- )",
+"text": "Send one space.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": []
+},
+{
+"name": "spaces",
+"stack": "( n -- )",
+"text": "Send n spaces (nothing for n ≤ 0).",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"zeros",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": []
+},
+{
+"name": "zeros",
+"stack": "( n -- )",
+"text": "Send n zeros, the character 0 (nothing for n ≤ 0); used by f..",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"type",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": []
+},
+{
+"name": "type",
+"stack": "( a u -- )",
+"text": "Send u characters starting at a.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+".",
+"u.",
+".\"",
+".("
+],
+"examples": []
+},
+{
+"name": ".",
+"stack": "( n -- )",
+"text": "Print a signed number in the current base, then a space.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+"u.",
+".\"",
+".("
+],
+"examples": [
+"led@ .   \\ prints 6",
+"btn@ .   \\ hold BTN1 while pressing Enter: prints 2",
+"13 pin@ . -1  ok"
+]
+},
+{
+"name": "u.",
+"stack": "( u -- )",
+"text": "Print an unsigned number, then a space: -1 u. gives 4294967295.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+".\"",
+".("
+],
+"examples": []
+},
+{
+"name": ".\"",
+"stack": "( -- )",
+"text": "Compile only: print text when the definition runs.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".("
+],
+"examples": [
+": hello .\" Hello, Arty!\" cr ;",
+": find3 10 0 do i 3 = if .\" found\" unloop exit then loop .\" none\" ;",
+": shout .\" loud\" ; immediate"
+]
+},
+{
+"name": ".(",
+"stack": "( -- )",
+"text": "Print text immediately, in a definition or at the terminal.",
+"section": "5.8 Terminal input and output",
+"area": "Terminal input and output",
+"related": [
+"key",
+"key?",
+"emit",
+"cr",
+"space",
+"spaces",
+"zeros",
+"type",
+".",
+"u.",
+".\""
+],
+"examples": []
+},
+{
+"name": "base",
+"stack": "( -- a )",
+"text": "Variable holding the base for number input and output (2..36).",
+"section": "5.9 Number base",
+"area": "Number base",
+"related": [
+"hex",
+"decimal"
+],
+"examples": []
+},
+{
+"name": "hex",
+"stack": "( -- )",
+"text": "Set the base to 16.",
+"section": "5.9 Number base",
+"area": "Number base",
+"related": [
+"base",
+"decimal"
+],
+"examples": []
+},
+{
+"name": "decimal",
+"stack": "( -- )",
+"text": "Set the base to 10.",
+"section": "5.9 Number base",
+"area": "Number base",
+"related": [
+"base",
+"hex"
+],
+"examples": []
+},
+{
+"name": "led!",
+"stack": "( n -- )",
+"text": "Set LD0..LD3 from bits 0..3 of n (1 = on).",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"5 led!   \\ LD0 and LD2 on",
+": count16 16 0 do i led! 250 ms loop 0 led! ;",
+": mirror begin btn@ led! key? until key drop 0 led! ;"
+]
+},
+{
+"name": "led@",
+"stack": "( -- n )",
+"text": "Read back the LED state.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"led@ .   \\ prints 6"
+]
+},
+{
+"name": "led-on",
+"stack": "( n -- )",
+"text": "Switch LED n (0..3, LD0..LD3) on; the other LEDs stay as they are.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"1 led-on   \\ LD1 on as well: LD0, LD1 and LD2 are lit",
+"0 led! 0 led-on"
+]
+},
+{
+"name": "led-off",
+"stack": "( n -- )",
+"text": "Switch LED n (0..3) off; the other LEDs stay as they are.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"0 led-off   \\ LD0 off: LD1 and LD2 stay"
+]
+},
+{
+"name": "led-toggle",
+"stack": "( n -- )",
+"text": "Change LED n (0..3): on becomes off, off becomes on.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;",
+": blink ( n -- ) begin dup led-toggle 250 ms key? until key 2drop ;"
+]
+},
+{
+"name": "led-mask",
+"stack": "( n -- mask )",
+"text": "The bit of LED n in led! (1 for LD0 … 8 for LD3); \"bad led\" for n outside 0..3.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": []
+},
+{
+"name": "btn@",
+"stack": "( -- n )",
+"text": "Buttons: bit 0 = BTN0 … bit 3 = BTN3, 1 = pressed. Debounced (sampled every 10 ms).",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"btn@ .   \\ hold BTN1 while pressing Enter: prints 2",
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+": wait-btn begin btn@ until ;"
+]
+},
+{
+"name": "sw@",
+"stack": "( -- n )",
+"text": "Switches: bit 0 = SW0, bit 1 = SW1, 1 = on.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+": delay sw@ 1+ 100 * ms ;"
+]
+},
+{
+"name": "rgb!",
+"stack": "( n -- )",
+"text": "RGB LEDs: bits 0/1/2 = LD4 red/green/blue, bits 3/4/5 = LD5 red/green/blue.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb@",
+"ms",
+"ms@",
+"us@"
+],
+"examples": [
+"9 rgb!   \\ LD4 red, LD5 red",
+": colours 8 1 do i dup 3 lshift or rgb! 400 ms loop 0 rgb! ;"
+]
+},
+{
+"name": "rgb@",
+"stack": "( -- n )",
+"text": "Read back the RGB LED state.",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"ms",
+"ms@",
+"us@"
+],
+"examples": []
+},
+{
+"name": "ms",
+"stack": "( n -- )",
+"text": "Wait n milliseconds (0..2147483647).",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms@",
+"us@"
+],
+"examples": [
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+"2 1 pwm-hz  100 1 pwm-duty  12 1 pwm-pin   \\ IO12: 2 Hz, 50 ms pulses",
+"250 2 pwm-duty  20 ms  0 mv@ . 880  ok"
+]
+},
+{
+"name": "ms@",
+"stack": "( -- u )",
+"text": "Millisecond counter, 32 bits; wraps every 2^32 ms (about 49.7 days).",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"us@"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+"2000 ms 15 led! ms@",
+"wait-btn ms@ swap - 0 led!"
+]
+},
+{
+"name": "us@",
+"stack": "( -- u )",
+"text": "Microsecond counter, 32 bits; wraps every 2^32 µs (about 71.6 minutes).",
+"section": "5.10 Board I/O",
+"area": "Board I/O",
+"related": [
+"led!",
+"led@",
+"led-on",
+"led-off",
+"led-toggle",
+"led-mask",
+"btn@",
+"sw@",
+"rgb!",
+"rgb@",
+"ms",
+"ms@"
+],
+"examples": []
+},
+{
+"name": "output",
+"stack": "( pin -- )",
+"text": "Make the pin an output.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"input",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+"13 output  13 high   \\ IO13 to 3.3 V",
+"pin-ss output pin-ss high   \\ the chip select, idle high",
+"14 output  14 high  10 ms  0 mv@ ."
+]
+},
+{
+"name": "input",
+"stack": "( pin -- )",
+"text": "Make the pin an input again.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+"13 low  13 input   \\ back to an input",
+"2 pin@ . -1  ok   \\ an open input with pull-up reads high",
+"14 low  10 ms  0 mv@ .  14 input"
+]
+},
+{
+"name": "high",
+"stack": "( pin -- )",
+"text": "Set the pin's output latch to 1 (3.3 V when it is an output).",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+"13 output  13 high   \\ IO13 to 3.3 V",
+"2 pin@ . -1  ok   \\ an open input with pull-up reads high",
+"1000 0 pwm-hz  250 0 pwm-duty  13 0 pwm-pin   \\ IO13: 1 kHz, 25 % high"
+]
+},
+{
+"name": "low",
+"stack": "( pin -- )",
+"text": "Set the output latch to 0.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+"13 low  13 input   \\ back to an input",
+"170 $100024 !   \\ IO1, IO3, IO5, IO7 high, the others low",
+"0 1 us pg-wait   \\ 0: wait for BTN0, then 1 us low"
+]
+},
+{
+"name": "toggle",
+"stack": "( pin -- )",
+"text": "Invert the output latch.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"pin!",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+": blink13 13 output begin 13 toggle 250 ms key? until key drop 13 low ;"
+]
+},
+{
+"name": "pin!",
+"stack": "( f pin -- )",
+"text": "high if f is true, otherwise low.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"toggle",
+"pin@",
+"pin",
+"bset",
+"bclr"
+],
+"examples": []
+},
+{
+"name": "pin@",
+"stack": "( pin -- f )",
+"text": "Read the level at the pin: true = high. Also works on outputs, where it reads back the driven level.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin",
+"bset",
+"bclr"
+],
+"examples": [
+"13 pin@ . -1  ok",
+"2 pin@ . -1  ok   \\ an open input with pull-up reads high",
+": watch2 begin 2 pin@ 0= 1 and led! key? until key drop 0 led! ;"
+]
+},
+{
+"name": "pin",
+"stack": "( n -- mask a )",
+"text": "Bit mask and port address of pin n; \"bad pin\" for numbers that are not shield pins.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"bset",
+"bclr"
+],
+"examples": [
+"pin    6    5    4    3    2    1        6    5    4    3    2    1",
+"pin   12   11   10    9    8    7       12   11   10    9    8    7"
+]
+},
+{
+"name": "bset",
+"stack": "( mask a -- )",
+"text": "Set the mask bits in the cell at a (a general helper).",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bclr"
+],
+"examples": []
+},
+{
+"name": "bclr",
+"stack": "( mask a -- )",
+"text": "Clear the mask bits in the cell at a.",
+"section": "5.11 Shield digital pins",
+"area": "Shield digital pins",
+"related": [
+"output",
+"input",
+"high",
+"low",
+"toggle",
+"pin!",
+"pin@",
+"pin",
+"bset"
+],
+"examples": []
+},
+{
+"name": "adc@",
+"stack": "( ch -- u )",
+"text": "Raw result of channel 0..8: 0..4095 for 0 to full scale. \"bad channel\" for other numbers.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"mv@",
+"volts@",
+"temp@",
+"ftemp@",
+".temp",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": [
+": level ( -- n ) 0 adc@ 820 / 1 swap lshift 1- ;"
+]
+},
+{
+"name": "mv@",
+"stack": "( ch -- mv )",
+"text": "The channel's voltage in millivolts at the shield pins.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"volts@",
+"temp@",
+"ftemp@",
+".temp",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": [
+"0 mv@ . 5  ok   \\ A0 open",
+"250 2 pwm-duty  20 ms  0 mv@ . 880  ok",
+"750 2 pwm-duty  20 ms  0 mv@ . 2413  ok"
+]
+},
+{
+"name": "volts@",
+"stack": "( ch -- ) ( F: -- v )",
+"text": "The channel's voltage in volts, as a float on the float stack (section 5.15). \"bad channel\" for numbers above 8.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"temp@",
+"ftemp@",
+".temp",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": [
+"0 volts@ f. 0.005673828  ok",
+": avg-volts ( ch -- ) ( F: -- v ) 0e 100 0 do dup volts@ f+ loop drop 100e f/ ;"
+]
+},
+{
+"name": "temp@",
+"stack": "( -- n )",
+"text": "Chip temperature in tenths of a degree Celsius: 452 means 45.2 °C.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"ftemp@",
+".temp",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": []
+},
+{
+"name": "ftemp@",
+"stack": "( F: -- celsius )",
+"text": "Chip temperature in degrees Celsius, as a float.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"temp@",
+".temp",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": [
+"ftemp@ f. 44.66434  ok"
+]
+},
+{
+"name": ".temp",
+"stack": "( -- )",
+"text": "Print the chip temperature, for example 45.2 C.",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"temp@",
+"ftemp@",
+"supply@",
+"xadc@",
+"vaux"
+],
+"examples": [
+".temp 44.7 C  ok",
+"supplies .temp",
+": thermo begin .temp cr 1000 ms key? until key drop ;"
+]
+},
+{
+"name": "supply@",
+"stack": "( reg -- mv )",
+"text": "A supply voltage in millivolts, from XADC register reg (table below).",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"temp@",
+"ftemp@",
+".temp",
+"xadc@",
+"vaux"
+],
+"examples": [
+"1 supply@ . 2 supply@ . 15 supply@ . 1018 1801 1489  ok",
+": supplies 1 supply@ . 2 supply@ . 6 supply@ . 13 supply@ . 14 supply@ . ;"
+]
+},
+{
+"name": "xadc@",
+"stack": "( reg -- u )",
+"text": "Raw 12-bit result of XADC status register reg (0..31).",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"temp@",
+"ftemp@",
+".temp",
+"supply@",
+"vaux"
+],
+"examples": []
+},
+{
+"name": "vaux",
+"stack": "( -- a )",
+"text": "Table of 9 bytes: the XADC auxiliary input of each channel (used by adc@).",
+"section": "5.12 Analog inputs",
+"area": "Analog inputs",
+"related": [
+"adc@",
+"mv@",
+"volts@",
+"temp@",
+"ftemp@",
+".temp",
+"supply@",
+"xadc@"
+],
+"examples": []
+},
+{
+"name": "pwm-pin",
+"stack": "( pin ch -- )",
+"text": "Route channel ch to the pin and start it. The pin becomes an output driven by the channel; \"bad pin\" for numbers that are not shield pins, \"pin taken\" for a pin another channel or peripheral owns (section 5.16).",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-off",
+"pwm-hz",
+"pwm-khz",
+"pwm-duty",
+"pwm-clocks",
+"pwm",
+"ud/u"
+],
+"examples": [
+"1000 0 pwm-hz  250 0 pwm-duty  13 0 pwm-pin   \\ IO13: 1 kHz, 25 % high",
+"2 1 pwm-hz  100 1 pwm-duty  12 1 pwm-pin   \\ IO12: 2 Hz, 50 ms pulses",
+"100 2 pwm-khz  14 2 pwm-pin"
+]
+},
+{
+"name": "pwm-off",
+"stack": "( ch -- )",
+"text": "Stop the channel and free its pin. The pin returns to its own latch and direction (an input after start-up).",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-hz",
+"pwm-khz",
+"pwm-duty",
+"pwm-clocks",
+"pwm",
+"ud/u"
+],
+"examples": [
+"0 pwm-off  1 pwm-off",
+"2 pwm-off"
+]
+},
+{
+"name": "pwm-hz",
+"stack": "( u ch -- )",
+"text": "Frequency in Hz, 1..25000000.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-khz",
+"pwm-duty",
+"pwm-clocks",
+"pwm",
+"ud/u"
+],
+"examples": [
+"1000 0 pwm-hz  250 0 pwm-duty  13 0 pwm-pin   \\ IO13: 1 kHz, 25 % high",
+"2 1 pwm-hz  100 1 pwm-duty  12 1 pwm-pin   \\ IO12: 2 Hz, 50 ms pulses"
+]
+},
+{
+"name": "pwm-khz",
+"stack": "( u ch -- )",
+"text": "Frequency in kHz, 1..25000.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-hz",
+"pwm-duty",
+"pwm-clocks",
+"pwm",
+"ud/u"
+],
+"examples": [
+"100 2 pwm-khz  14 2 pwm-pin"
+]
+},
+{
+"name": "pwm-duty",
+"stack": "( permille ch -- )",
+"text": "Duty cycle in ‰ (tenths of a percent), 0..1000: 0 is always low, 1000 always high; values outside are clamped.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-hz",
+"pwm-khz",
+"pwm-clocks",
+"pwm",
+"ud/u"
+],
+"examples": [
+"1000 0 pwm-hz  250 0 pwm-duty  13 0 pwm-pin   \\ IO13: 1 kHz, 25 % high",
+"500 0 pwm-duty   \\ now 50 %",
+"2 1 pwm-hz  100 1 pwm-duty  12 1 pwm-pin   \\ IO12: 2 Hz, 50 ms pulses"
+]
+},
+{
+"name": "pwm-clocks",
+"stack": "( ud ch -- )",
+"text": "The period directly, in 50 MHz clocks (20 ns), as a double number: low cell, then high cell, read like a duration (d>ticks, section 5.14). At least 2: 100000 0 0 pwm-clocks gives 500 Hz.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-hz",
+"pwm-khz",
+"pwm-duty",
+"pwm",
+"ud/u"
+],
+"examples": []
+},
+{
+"name": "pwm",
+"stack": "( ch -- a )",
+"text": "Register address of channel ch; \"bad channel\" for ch above 3.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-hz",
+"pwm-khz",
+"pwm-duty",
+"pwm-clocks",
+"ud/u"
+],
+"examples": []
+},
+{
+"name": "ud/u",
+"stack": "( ud u -- ud' )",
+"text": "Unsigned 64-bit double divided by an unsigned single, giving a double quotient.",
+"section": "5.13 PWM",
+"area": "PWM",
+"related": [
+"pwm-pin",
+"pwm-off",
+"pwm-hz",
+"pwm-khz",
+"pwm-duty",
+"pwm-clocks",
+"pwm"
+],
+"examples": []
+},
+{
+"name": "ns",
+"stack": "( u -- d )",
+"text": "u nanoseconds in ticks, rounded down to 5 ns: 100 ns = 20 ticks.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"1 500 ns pg-step   \\ 0: clock high",
+"0 500 ns 0 999 pg-loop   \\ 1: clock low; steps 0-1 play 999 times",
+"3 500 ns pg-step   \\ 2: clock and marker high"
+]
+},
+{
+"name": "us",
+"stack": "( u -- d )",
+"text": "u microseconds: u × 200 ticks; u up to 21474836, larger gives \"too long\".",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"0 1 us pg-wait   \\ 0: wait for BTN0, then 1 us low",
+"0 2 us 0 pg-jump   \\ 3: 2 us low, then wait again",
+"0 1 0 pg-wait  $100 2 us pg-step  0 1 0 0 pg-jump  pg-start"
+]
+},
+{
+"name": "msec",
+"stack": "( u -- d )",
+"text": "u milliseconds: u × 200,000 ticks; u up to 21474, larger gives \"too long\". Not ms: that word waits (section 5.10).",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"pg-stop 0 pg-at  1 1000 msec pg-step  0 pg-end  run-time .   \\ 1000",
+": counts 16 0 do i 250 msec pg-step loop ;",
+"counts  15 pg-at  15 250 msec 0 pg-jump  pg-start"
+]
+},
+{
+"name": "d>ticks",
+"stack": "( d -- u )",
+"text": "The ticks of a duration ( lo hi ): lo when hi is 0, otherwise lo + hi × 65536, the 16-bit style; \"too long\" when lo or hi is above 65535 then. The step and PWM words use it; us and msec refuse 2^32 ticks and more themselves ((dur)), so their doubles never get the 16-bit reading.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": []
+},
+{
+"name": "pg-at",
+"stack": "( step -- )",
+"text": "The step the next step word stores, 0..4095.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"pg-stop  3 pg-enable  0 pg-idle  0 pg-at",
+"pg-stop  3 pg-enable  0 pg-idle  48 1 pg-trigger  0 pg-at",
+"pg-stop 0 pg-at  1 1000 msec pg-step  0 pg-end  run-time .   \\ 1000"
+]
+},
+{
+"name": "pg-step",
+"stack": "( levels d -- )",
+"text": "Store a step: the levels (channel n = bit n) for d ticks, then the next step.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"1 500 ns pg-step   \\ 0: clock high",
+"3 500 ns pg-step   \\ 2: clock and marker high",
+"3 500 ns pg-step   \\ 1: clock and frame high"
+]
+},
+{
+"name": "pg-loop",
+"stack": "( levels d target count -- )",
+"text": "Store the last step of a repeat: after it, go back to step *target* until the steps *target*..this one have run *count* times in all; 0 = forever.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"0 500 ns 0 999 pg-loop   \\ 1: clock low; steps 0-1 play 999 times",
+"2 500 ns 1 8 pg-loop   \\ 2: clock low; steps 1-2 play 8 times"
+]
+},
+{
+"name": "pg-jump",
+"stack": "( levels d target -- )",
+"text": "Store a step that continues at step *target* after it.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"0 500 ns 0 pg-jump   \\ 3: low; back to step 0, forever",
+"0 2 us 0 pg-jump   \\ 3: 2 us low, then wait again",
+"counts  15 pg-at  15 250 msec 0 pg-jump  pg-start"
+]
+},
+{
+"name": "pg-wait",
+"stack": "( levels d -- )",
+"text": "Store a wait step: it shows its levels, waits for the trigger, then holds them for d ticks.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-end",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"0 1 us pg-wait   \\ 0: wait for BTN0, then 1 us low",
+"0 1 0 pg-wait  $100 2 us pg-step  0 1 0 0 pg-jump  pg-start"
+]
+},
+{
+"name": "pg-end",
+"stack": "( levels -- )",
+"text": "Store the end: the generator stops with these levels on the pins.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-start",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"pg-stop 0 pg-at  1 1000 msec pg-step  0 pg-end  run-time .   \\ 1000"
+]
+},
+{
+"name": "pg-start",
+"stack": "( -- )",
+"text": "Play from step 0 (also while playing: start again).",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-stop",
+"pg-trig"
+],
+"examples": [
+"pg-start",
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+"counts  15 pg-at  15 250 msec 0 pg-jump  pg-start"
+]
+},
+{
+"name": "pg-stop",
+"stack": "( -- )",
+"text": "Stop; the enabled channels go to their idle levels.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-trig"
+],
+"examples": [
+"pg-stop  3 pg-enable  0 pg-idle  0 pg-at",
+"pg-stop  3 pg-enable  0 pg-idle  48 1 pg-trigger  0 pg-at",
+"pg-stop 0 pg-at  1 1000 msec pg-step  0 pg-end  run-time .   \\ 1000"
+]
+},
+{
+"name": "pg-trig",
+"stack": "( -- )",
+"text": "The software trigger: a waiting step goes on.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": []
+},
+{
+"name": "pg-enable",
+"stack": "( mask -- )",
+"text": "Which channels the generator drives (bit n = channel n).",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": [
+"pg-stop  3 pg-enable  0 pg-idle  0 pg-at",
+"pg-stop  3 pg-enable  0 pg-idle  48 1 pg-trigger  0 pg-at",
+"pg-stop  $F pg-enable  0 pg-at"
+]
+},
+{
+"name": "pg-idle",
+"stack": "( levels -- )",
+"text": "The levels while stopped.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": [
+"pg-stop  3 pg-enable  0 pg-idle  0 pg-at",
+"pg-stop  3 pg-enable  0 pg-idle  48 1 pg-trigger  0 pg-at"
+]
+},
+{
+"name": "pg-trigger",
+"stack": "( source edge -- )",
+"text": "What wait steps wait for. Source: a shield pin 0..41, 48..51 for BTN0..BTN3, 63 for the software trigger only. Edge: 1 rising, 2 falling, 3 both. pg-trig works with any source.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": [
+"pg-stop  3 pg-enable  0 pg-idle  48 1 pg-trigger  0 pg-at",
+"pg-stop  $100 pg-enable  49 1 pg-trigger  0 pg-at"
+]
+},
+{
+"name": "pg-status",
+"stack": "( -- u )",
+"text": "The status bits, below.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+"pg-status .   \\ 3: playing and waiting"
+]
+},
+{
+"name": "pg-pc",
+"stack": "( -- step )",
+"text": "The step playing now.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": []
+},
+{
+"name": "pg-out@",
+"stack": "( -- levels )",
+"text": "The levels on the channels now.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": []
+},
+{
+"name": "pg-sync",
+"stack": "( -- )",
+"text": "Wait until the generator has taken the last command or setting (about 0.1 µs). The words above that command or set it do this themselves.",
+"section": "5.14 Pattern generator",
+"area": "Pattern generator",
+"related": [
+"ns",
+"us",
+"msec",
+"d>ticks",
+"pg-at",
+"pg-step",
+"pg-loop",
+"pg-jump",
+"pg-wait",
+"pg-end",
+"pg-start",
+"pg-stop"
+],
+"examples": []
+},
+{
+"name": "fdup",
+"stack": "( F: r -- r r )",
+"text": "Copy the top float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdrop",
+"fswap",
+"fover",
+"frot",
+"fnip",
+"fdepth",
+"f.s"
+],
+"examples": [
+": gauss ( F: x -- y ) fdup f* fnegate fexp ;"
+]
+},
+{
+"name": "fdrop",
+"stack": "( F: r -- )",
+"text": "Remove the top float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fswap",
+"fover",
+"frot",
+"fnip",
+"fdepth",
+"f.s"
+],
+"examples": []
+},
+{
+"name": "fswap",
+"stack": "( F: r1 r2 -- r2 r1 )",
+"text": "Exchange the top two floats.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fover",
+"frot",
+"fnip",
+"fdepth",
+"f.s"
+],
+"examples": [
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;"
+]
+},
+{
+"name": "fover",
+"stack": "( F: r1 r2 -- r1 r2 r1 )",
+"text": "Copy the second float to the top.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fswap",
+"frot",
+"fnip",
+"fdepth",
+"f.s"
+],
+"examples": [
+">r fn !  fover f- r@ s>f f/ h f! x0 f!"
+]
+},
+{
+"name": "frot",
+"stack": "( F: r1 r2 r3 -- r2 r3 r1 )",
+"text": "Rotate the third float to the top.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fswap",
+"fover",
+"fnip",
+"fdepth",
+"f.s"
+],
+"examples": []
+},
+{
+"name": "fnip",
+"stack": "( F: r1 r2 -- r2 )",
+"text": "Remove the second float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fswap",
+"fover",
+"frot",
+"fdepth",
+"f.s"
+],
+"examples": []
+},
+{
+"name": "fdepth",
+"stack": "( -- n )",
+"text": "Number of floats on the float stack.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fswap",
+"fover",
+"frot",
+"fnip",
+"f.s"
+],
+"examples": []
+},
+{
+"name": "f.s",
+"stack": "( -- )",
+"text": "Show the float stack without changing it, like .s: <3> 1. 2.5 3..",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fdup",
+"fdrop",
+"fswap",
+"fover",
+"frot",
+"fnip",
+"fdepth"
+],
+"examples": []
+},
+{
+"name": "f+",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "Sum.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+": x(i) ( i -- ) ( F: -- x ) s>f h f@ f* x0 f@ f+ ;",
+"0 f(i) r@ f(i) f+",
+"r@ 1 do i f(i) i weight f* f+ loop"
+]
+},
+{
+"name": "f-",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "Difference r1 − r2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+">r fn !  fover f- r@ s>f f/ h f! x0 f!"
+]
+},
+{
+"name": "f*",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "Product.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+"9.81e fconstant g  g 2e f* f. 19.62  ok",
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": deg ( F: degrees -- radians ) pi f* 180e f/ ;"
+]
+},
+{
+"name": "f/",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "Quotient r1 / r2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+"1e 3e f/ f. 0.3333333  ok",
+"1e 0e f/ f. Inf  ok",
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;"
+]
+},
+{
+"name": "fsqrt",
+"stack": "( F: r -- r' )",
+"text": "Square root; NaN for a negative r.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+": rt2 [ 2e fsqrt ] fliteral ;  rt2 f. 1.414214  ok",
+"2e fsqrt fs. 1.414214E0  ok"
+]
+},
+{
+"name": "fnegate",
+"stack": "( F: r -- -r )",
+"text": "Change the sign.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": [
+": gauss ( F: x -- y ) fdup f* fnegate fexp ;"
+]
+},
+{
+"name": "fabs",
+"stack": "( F: r -- r' )",
+"text": "Absolute value.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fmin",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": []
+},
+{
+"name": "fmin",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "The smaller of the two.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmax",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": []
+},
+{
+"name": "fmax",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "The larger of the two.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"ftrunc",
+"floor",
+"fround"
+],
+"examples": []
+},
+{
+"name": "ftrunc",
+"stack": "( F: r -- r' )",
+"text": "Round toward zero to a whole number: -2.7e ftrunc gives −2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"floor",
+"fround"
+],
+"examples": []
+},
+{
+"name": "floor",
+"stack": "( F: r -- r' )",
+"text": "Round toward minus infinity: -2.5e floor gives −3.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"fround"
+],
+"examples": []
+},
+{
+"name": "fround",
+"stack": "( F: r -- r' )",
+"text": "Round to the nearest whole number, halves to the even one: 2.5e fround gives 2, 3.5e fround 4.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f+",
+"f-",
+"f*",
+"f/",
+"fsqrt",
+"fnegate",
+"fabs",
+"fmin",
+"fmax",
+"ftrunc",
+"floor"
+],
+"examples": []
+},
+{
+"name": "f<",
+"stack": "( F: r1 r2 -- ) ( -- f )",
+"text": "r1 less than r2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f=",
+"f>",
+"f0<",
+"f0=",
+"f0>"
+],
+"examples": []
+},
+{
+"name": "f=",
+"stack": "( F: r1 r2 -- ) ( -- f )",
+"text": "r1 equal to r2. fdup f= is false only for a NaN.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f<",
+"f>",
+"f0<",
+"f0=",
+"f0>"
+],
+"examples": []
+},
+{
+"name": "f>",
+"stack": "( F: r1 r2 -- ) ( -- f )",
+"text": "r1 greater than r2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f<",
+"f=",
+"f0<",
+"f0=",
+"f0>"
+],
+"examples": []
+},
+{
+"name": "f0<",
+"stack": "( F: r -- ) ( -- f )",
+"text": "r is negative.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f<",
+"f=",
+"f>",
+"f0=",
+"f0>"
+],
+"examples": []
+},
+{
+"name": "f0=",
+"stack": "( F: r -- ) ( -- f )",
+"text": "r is zero.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f<",
+"f=",
+"f>",
+"f0<",
+"f0>"
+],
+"examples": []
+},
+{
+"name": "f0>",
+"stack": "( F: r -- ) ( -- f )",
+"text": "r is positive.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f<",
+"f=",
+"f>",
+"f0<",
+"f0="
+],
+"examples": []
+},
+{
+"name": "s>f",
+"stack": "( n -- ) ( F: -- r )",
+"text": "Integer to float; exact up to 2^24 (16777216), rounded above.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": [
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": x(i) ( i -- ) ( F: -- x ) s>f h f@ f* x0 f@ f+ ;",
+">r fn !  fover f- r@ s>f f/ h f! x0 f!"
+]
+},
+{
+"name": "f>s",
+"stack": "( F: r -- ) ( -- n )",
+"text": "Float to integer, toward zero: -3.99e f>s gives −3. Values beyond the integer range give −2147483648 or 2147483647; NaN gives 0.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "u>f",
+"stack": "( u -- ) ( F: -- r )",
+"text": "Unsigned integer to float: -1 u>f gives 4.294967E9.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "f>u",
+"stack": "( F: r -- ) ( -- u )",
+"text": "Float to unsigned integer, toward zero, for 0 ≤ r < 2^32; a negative r gives 0.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "d>f",
+"stack": "( d -- ) ( F: -- r )",
+"text": "Double number (64 bits, section 5.3) to float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"f>d",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "f>d",
+"stack": "( F: r -- ) ( -- d )",
+"text": "Float to double number, toward zero, for |r| < 2^63: 1e15 f>d gives −1543503872 232830.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>bits",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "f>bits",
+"stack": "( F: r -- ) ( -- x )",
+"text": "The float's 32 bits, unchanged: 1e f>bits hex u. gives 3F800000.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"bits>f",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": "bits>f",
+"stack": "( x -- ) ( F: -- r )",
+"text": "A float from its 32 bits: $40490FDB bits>f f. gives 3.141593.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+">float",
+"represent"
+],
+"examples": []
+},
+{
+"name": ">float",
+"stack": "( a u -- f ) ( F: -- r | )",
+"text": "Convert the string a u, written like a float literal (above). On success the float goes to the float stack and f is true; otherwise f is false and the float stack is unchanged. An empty string gives false.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+"represent"
+],
+"examples": []
+},
+{
+"name": "represent",
+"stack": "( a u -- n f1 f2 ) ( F: r -- )",
+"text": "Write the significant digits of r, rounded to u digits (at most 9), to the buffer at a, without sign or point. n is the decimal exponent, so that r = 0.ddd × 10^n; f1 is true if r is negative; f2 is false if r is a NaN or infinite.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"s>f",
+"f>s",
+"u>f",
+"f>u",
+"d>f",
+"f>d",
+"f>bits",
+"bits>f",
+">float"
+],
+"examples": []
+},
+{
+"name": "f@",
+"stack": "( a -- ) ( F: -- r )",
+"text": "Fetch the float at a.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": [
+"fvariable speed  2.5e speed f!  speed f@ f. 2.5  ok",
+"create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f. 4.  ok",
+": x(i) ( i -- ) ( F: -- x ) s>f h f@ f* x0 f@ f+ ;"
+]
+},
+{
+"name": "f!",
+"stack": "( a -- ) ( F: r -- )",
+"text": "Store r at a.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": [
+"fvariable speed  2.5e speed f!  speed f@ f. 2.5  ok",
+">r fn !  fover f- r@ s>f f/ h f! x0 f!"
+]
+},
+{
+"name": "sf@",
+"stack": "",
+"text": "The same as f@ and f!.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "sf!",
+"stack": "",
+"text": "The same as f@ and f!.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "f,",
+"stack": "( F: r -- )",
+"text": "Align, store r at here, advance by one cell.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": [
+"create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f. 4.  ok"
+]
+},
+{
+"name": "floats",
+"stack": "( n -- n*4 )",
+"text": "Size of n floats in bytes.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": [
+"create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f. 4.  ok"
+]
+},
+{
+"name": "sfloats",
+"stack": "( n -- n*4 )",
+"text": "Size of n floats in bytes.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "float+",
+"stack": "( a -- a+4 )",
+"text": "Address of the next float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "sfloat+",
+"stack": "( a -- a+4 )",
+"text": "Address of the next float.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"faligned",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "faligned",
+"stack": "( a -- a' )",
+"text": "Like aligned.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"sfaligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "sfaligned",
+"stack": "( a -- a' )",
+"text": "Like aligned.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"falign",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "falign",
+"stack": "( -- )",
+"text": "Like align.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"sfalign"
+],
+"examples": []
+},
+{
+"name": "sfalign",
+"stack": "( -- )",
+"text": "Like align.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign"
+],
+"examples": []
+},
+{
+"name": "fvariable",
+"stack": "( -- )",
+"text": "Create a float variable, initially 0. name then pushes its address.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign"
+],
+"examples": [
+"fvariable speed  2.5e speed f!  speed f@ f. 2.5  ok",
+"variable fn  fvariable x0  fvariable h"
+]
+},
+{
+"name": "fconstant",
+"stack": "( F: r -- )",
+"text": "Create a float constant. name then pushes r on the float stack.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign"
+],
+"examples": [
+"9.81e fconstant g  g 2e f* f. 19.62  ok"
+]
+},
+{
+"name": "fliteral",
+"stack": "( F: r -- )",
+"text": "Compile r as a float (immediate), like literal.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f@",
+"f!",
+"sf@",
+"sf!",
+"f,",
+"floats",
+"sfloats",
+"float+",
+"sfloat+",
+"faligned",
+"sfaligned",
+"falign"
+],
+"examples": [
+": rt2 [ 2e fsqrt ] fliteral ;  rt2 f. 1.414214  ok"
+]
+},
+{
+"name": "f.",
+"stack": "( F: r -- )",
+"text": "Print r with precision significant digits, then a space. Fixed notation for 10^-7 ≤ |r| < 10^9, with trailing zeros removed and always a decimal point: 3.75, 0.3333333, 2.; otherwise scientific notation, also without trailing zeros: 1.E10, 3.4E38.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fs.",
+"fe.",
+"precision",
+"set-precision"
+],
+"examples": [
+"ftemp@ f. 44.66434  ok",
+"0 volts@ f. 0.005673828  ok",
+"fvariable speed  2.5e speed f!  speed f@ f. 2.5  ok"
+]
+},
+{
+"name": "fs.",
+"stack": "( F: r -- )",
+"text": "Print r in scientific notation, always with precision digits: 3.333333E-1.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f.",
+"fe.",
+"precision",
+"set-precision"
+],
+"examples": [
+"2e fsqrt fs. 1.414214E0  ok"
+]
+},
+{
+"name": "fe.",
+"stack": "( F: r -- )",
+"text": "Print r in engineering notation: the exponent is a multiple of 3, with 1 to 3 digits before the point: 12.34500E3.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f.",
+"fs.",
+"precision",
+"set-precision"
+],
+"examples": [
+"12345e fe. 12.34500E3  ok"
+]
+},
+{
+"name": "precision",
+"stack": "( -- u )",
+"text": "The number of significant digits the three words print: 1..9, 7 after start-up.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f.",
+"fs.",
+"fe.",
+"set-precision"
+],
+"examples": []
+},
+{
+"name": "set-precision",
+"stack": "( u -- )",
+"text": "Set precision; numbers outside 1..9 are taken as 1 or 9.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"f.",
+"fs.",
+"fe.",
+"precision"
+],
+"examples": [
+"9 set-precision 0.1e f. 0.100000001  ok",
+"7 set-precision 0.1e f. 0.1  ok"
+]
+},
+{
+"name": "pi",
+"stack": "( F: -- r )",
+"text": "The float nearest π, 3.141593.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": [
+": deg ( F: degrees -- radians ) pi f* 180e f/ ;",
+"1e fatan 180e f* pi f/ f.   \\ prints 45.",
+"0e pi ' fsin 100 simpson f.   \\ prints 2."
+]
+},
+{
+"name": "fsin",
+"stack": "( F: x -- r )",
+"text": "Sine.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": [
+"30e deg fsin f.   \\ prints 0.5",
+"0e pi ' fsin 100 simpson f.   \\ prints 2."
+]
+},
+{
+"name": "fcos",
+"stack": "( F: x -- r )",
+"text": "Cosine.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "fsincos",
+"stack": "( F: x -- sin cos )",
+"text": "Sine and cosine, the cosine on top; faster than both separately.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "ftan",
+"stack": "( F: x -- r )",
+"text": "Tangent.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "fasin",
+"stack": "( F: x -- r )",
+"text": "Arc sine, −π/2..π/2; NaN for |x| > 1.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "facos",
+"stack": "( F: x -- r )",
+"text": "Arc cosine, 0..π; NaN for |x| > 1.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "fatan",
+"stack": "( F: x -- r )",
+"text": "Arc tangent, −π/2..π/2.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan2",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": [
+"1e fatan 180e f* pi f/ f.   \\ prints 45."
+]
+},
+{
+"name": "fatan2",
+"stack": "( F: y x -- r )",
+"text": "The angle of the point (x, y), −π..π: -1e -1e fatan2 f. gives −2.356194.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fexp",
+"fln",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "fexp",
+"stack": "( F: x -- r )",
+"text": "e^x; infinity above 88.72, 0 below −87.34.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fln",
+"flog",
+"falog"
+],
+"examples": [
+": gauss ( F: x -- y ) fdup f* fnegate fexp ;"
+]
+},
+{
+"name": "fln",
+"stack": "( F: x -- r )",
+"text": "Natural logarithm; −Inf for 0, NaN for a negative x.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"flog",
+"falog"
+],
+"examples": []
+},
+{
+"name": "flog",
+"stack": "( F: x -- r )",
+"text": "Logarithm to base 10.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"falog"
+],
+"examples": []
+},
+{
+"name": "falog",
+"stack": "( F: x -- r )",
+"text": "10^x.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "flnp1",
+"stack": "( F: x -- r )",
+"text": "ln(1 + x), accurate also for a tiny x: 1e-5 flnp1 fs. gives 9.999950E-6.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "fexpm1",
+"stack": "( F: x -- r )",
+"text": "e^x − 1, accurate also for a tiny x: 1e-5 fexpm1 fs. gives 1.000005E-5.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "f**",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "r1 to the power r2, computed as e^(r2 × ln r1): 2e 10e f gives 1024. A negative r1 needs a whole-number r2 (otherwise NaN); 0 to the power 0 is 1.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": [
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;"
+]
+},
+{
+"name": "fsinh",
+"stack": "( F: x -- r )",
+"text": "Hyperbolic sine.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "fcosh",
+"stack": "( F: x -- r )",
+"text": "Hyperbolic cosine.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "ftanh",
+"stack": "( F: x -- r )",
+"text": "Hyperbolic tangent.",
+"section": "5.15 Floating point",
+"area": "Floating point",
+"related": [
+"pi",
+"fsin",
+"fcos",
+"fsincos",
+"ftan",
+"fasin",
+"facos",
+"fatan",
+"fatan2",
+"fexp",
+"fln",
+"flog"
+],
+"examples": []
+},
+{
+"name": "uart-open",
+"stack": "( baud tx rx u -- )",
+"text": "Open UART u at the baud rate, sending on pin tx and receiving on pin rx: 115200 1 0 0 uart-open (TX on IO1, RX on IO0).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-close",
+"uart-emit",
+"uart-type",
+"uart-key?",
+"uart-key",
+"uart-status"
+],
+"examples": [
+"115200 26 27 0 uart-open  115200 28 29 1 uart-open   \\ wires IO26-IO29, IO28-IO27"
+]
+},
+{
+"name": "uart-close",
+"stack": "( u -- )",
+"text": "Close it and free its pins.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-emit",
+"uart-type",
+"uart-key?",
+"uart-key",
+"uart-status"
+],
+"examples": []
+},
+{
+"name": "uart-emit",
+"stack": "( c u -- )",
+"text": "Send a byte; waits while the send FIFO is full.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-close",
+"uart-type",
+"uart-key?",
+"uart-key",
+"uart-status"
+],
+"examples": [
+"65 0 uart-emit  1 uart-key emit A  ok"
+]
+},
+{
+"name": "uart-type",
+"stack": "( a n u -- )",
+"text": "Send a string.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-close",
+"uart-emit",
+"uart-key?",
+"uart-key",
+"uart-status"
+],
+"examples": [
+"msg 2 1 uart-type  0 uart-key emit 0 uart-key emit hi ok"
+]
+},
+{
+"name": "uart-key?",
+"stack": "( u -- f )",
+"text": "True if a received byte is waiting.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-close",
+"uart-emit",
+"uart-type",
+"uart-key",
+"uart-status"
+],
+"examples": []
+},
+{
+"name": "uart-key",
+"stack": "( u -- c )",
+"text": "The next received byte; waits for one.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-close",
+"uart-emit",
+"uart-type",
+"uart-key?",
+"uart-status"
+],
+"examples": [
+"65 0 uart-emit  1 uart-key emit A  ok",
+"msg 2 1 uart-type  0 uart-key emit 0 uart-key emit hi ok"
+]
+},
+{
+"name": "uart-status",
+"stack": "( u -- bits )",
+"text": "Bit 2: everything sent; bit 3: a received byte was lost because the FIFO was full; bit 4: a byte had no stop bit (wrong baud rate?). Reading clears bits 3 and 4.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"uart-open",
+"uart-close",
+"uart-emit",
+"uart-type",
+"uart-key?",
+"uart-key"
+],
+"examples": []
+},
+{
+"name": "spi-open",
+"stack": "( sck mosi miso s -- )",
+"text": "Open SPI master s on these pins; mode 0, 8 bits, 1 MHz until changed.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": [
+"pin-sck pin-mosi pin-miso 0 spi-open  1000000 0 spi-hz"
+]
+},
+{
+"name": "spi-close",
+"stack": "( s -- )",
+"text": "Close it and free its pins.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": []
+},
+{
+"name": "spi-hz",
+"stack": "( hz s -- )",
+"text": "The SCK frequency: 25 MHz / an integer, at most 12.5 MHz (rounded down to the next possible one).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": [
+"pin-sck pin-mosi pin-miso 0 spi-open  1000000 0 spi-hz"
+]
+},
+{
+"name": "spi-mode",
+"stack": "( mode s -- )",
+"text": "Mode 0..3 (bit 1 CPOL: SCK idles high; bit 0 CPHA: data taken at the second edge).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": []
+},
+{
+"name": "spi-bits",
+"stack": "( n s -- )",
+"text": "8, 16 or 32 bits per transfer.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-lsb",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": []
+},
+{
+"name": "spi-lsb",
+"stack": "( f s -- )",
+"text": "True: least significant bit first.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-xfer",
+"spi-write",
+"spi-read"
+],
+"examples": []
+},
+{
+"name": "spi-xfer",
+"stack": "( out s -- in )",
+"text": "One transfer: sends out, returns what came back.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-write",
+"spi-read"
+],
+"examples": [
+"pin-ss low $9F 0 spi-xfer drop 0 0 spi-xfer . pin-ss high   \\ e.g. a flash's ID"
+]
+},
+{
+"name": "spi-write",
+"stack": "( a n s -- )",
+"text": "Send n bytes from a (the answers are dropped).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-read"
+],
+"examples": []
+},
+{
+"name": "spi-read",
+"stack": "( a n s -- )",
+"text": "Receive n bytes into a (sending zeros).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"spi-open",
+"spi-close",
+"spi-hz",
+"spi-mode",
+"spi-bits",
+"spi-lsb",
+"spi-xfer",
+"spi-write"
+],
+"examples": []
+},
+{
+"name": "i2c-open",
+"stack": "( hz -- )",
+"text": "Open the I2C master on SCL and SDA: 100000 i2c-open. First it frees the bus: 9 clocks on SCL and a stop, in case a slave was left in the middle of a read and still holds SDA (about 0.2 ms).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": [
+"100000 i2c-open  i2c-scan"
+]
+},
+{
+"name": "i2c-open-pins",
+"stack": "( hz scl sda -- )",
+"text": "The same on other pins.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-close",
+"stack": "( -- )",
+"text": "Close it and free its pins.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c@",
+"stack": "( reg addr -- b )",
+"text": "Read register reg of the device at addr: start, address+W, reg, repeated start, address+R, one byte, stop. \"no ack\" if the device does not answer.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": [
+"0 $68 i2c@ .   \\ its seconds register"
+]
+},
+{
+"name": "i2c!",
+"stack": "( b reg addr -- )",
+"text": "Write b into register reg of the device at addr.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-scan",
+"stack": "( -- )",
+"text": "Print the address (in hex) of every device that answers, from $08 to $77.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": [
+"100000 i2c-open  i2c-scan"
+]
+},
+{
+"name": "i2c-probe",
+"stack": "( addr -- f )",
+"text": "True if a device answers at addr.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-addr",
+"stack": "( addr rw -- ack? )",
+"text": "Start (or repeated start) and the address byte, rw 1 = read; true if acknowledged.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-start",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-start",
+"stack": "( -- )",
+"text": "A start condition.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-stop",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-stop",
+"stack": "( -- )",
+"text": "A stop condition.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-write",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-write",
+"stack": "( b -- ack? )",
+"text": "Send a byte; true if the device acknowledged it.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-read"
+],
+"examples": []
+},
+{
+"name": "i2c-read",
+"stack": "( ack? -- b )",
+"text": "Receive a byte, then acknowledge it (true: more bytes follow) or not (false: the last one).",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [
+"i2c-open",
+"i2c-open-pins",
+"i2c-close",
+"i2c@",
+"i2c!",
+"i2c-scan",
+"i2c-probe",
+"i2c-addr",
+"i2c-start",
+"i2c-stop",
+"i2c-write"
+],
+"examples": []
+},
+{
+"name": "dds-hz",
+"stack": "( F: hz -- )",
+"text": "The frequency, a float: 1000000e dds-hz. Can change while it runs.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"dds-pin",
+"dds-off"
+],
+"examples": [
+"32768e dds-hz 13 dds-pin   \\ a 32.768 kHz clock on IO13",
+"1e6 dds-hz   \\ now 1 MHz"
+]
+},
+{
+"name": "dds-pin",
+"stack": "( pin -- )",
+"text": "Start it on the pin (or move it to another one).",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"dds-hz",
+"dds-off"
+],
+"examples": [
+"32768e dds-hz 13 dds-pin   \\ a 32.768 kHz clock on IO13"
+]
+},
+{
+"name": "dds-off",
+"stack": "( -- )",
+"text": "Stop it and free the pin.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"dds-hz",
+"dds-pin"
+],
+"examples": [
+"dds-off"
+]
+},
+{
+"name": "tone",
+"stack": "( F: hz -- )",
+"text": "Play the frequency: 440e tone. Can change while it plays.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone-off",
+"wave",
+"sine",
+"square",
+"triangle",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": [
+"50 volume sine wave  440e tone  1000 ms  tone-off"
+]
+},
+{
+"name": "tone-off",
+"stack": "( -- )",
+"text": "Stop (the volume ramps down in 2 ms).",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"wave",
+"sine",
+"square",
+"triangle",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": [
+"50 volume sine wave  440e tone  1000 ms  tone-off"
+]
+},
+{
+"name": "wave",
+"stack": "( n -- )",
+"text": "The waveform: sine (0, after start-up), square, triangle or sawtooth.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"sine",
+"square",
+"triangle",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": [
+"50 volume sine wave  440e tone  1000 ms  tone-off"
+]
+},
+{
+"name": "sine",
+"stack": "( -- n )",
+"text": "The waveforms for wave: 0, 1, 2 and 3.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"square",
+"triangle",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": [
+"50 volume sine wave  440e tone  1000 ms  tone-off"
+]
+},
+{
+"name": "square",
+"stack": "( -- n )",
+"text": "The waveforms for wave: 0, 1, 2 and 3.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"sine",
+"triangle",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": []
+},
+{
+"name": "triangle",
+"stack": "( -- n )",
+"text": "The waveforms for wave: 0, 1, 2 and 3.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"sine",
+"square",
+"sawtooth",
+"volume",
+"beep"
+],
+"examples": []
+},
+{
+"name": "sawtooth",
+"stack": "( -- n )",
+"text": "The waveforms for wave: 0, 1, 2 and 3.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"sine",
+"square",
+"triangle",
+"volume",
+"beep"
+],
+"examples": []
+},
+{
+"name": "volume",
+"stack": "( percent -- )",
+"text": "0..100, 50 after start-up.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"sine",
+"square",
+"triangle",
+"sawtooth",
+"beep"
+],
+"examples": [
+"50 volume sine wave  440e tone  1000 ms  tone-off"
+]
+},
+{
+"name": "beep",
+"stack": "( ms -- ) ( F: hz -- )",
+"text": "A tone for ms milliseconds: 200 880e beep.",
+"section": "5.17 DDS and tone generator",
+"area": "DDS and tone generator",
+"related": [
+"tone",
+"tone-off",
+"wave",
+"sine",
+"square",
+"triangle",
+"sawtooth",
+"volume"
+],
+"examples": [
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;"
+]
+},
+{
+"name": ":",
+"stack": "( -- )",
+"text": "Start a new definition called name and switch to compiling.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+";",
+"variable",
+"constant",
+"create",
+"immediate"
+],
+"examples": [
+": hello .\" Hello, Arty!\" cr ;",
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;"
+]
+},
+{
+"name": ";",
+"stack": "( -- )",
+"text": "End the definition, make it findable, switch back to interpreting.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+":",
+"variable",
+"constant",
+"create",
+"immediate"
+],
+"examples": [
+": hello .\" Hello, Arty!\" cr ;",
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;"
+]
+},
+{
+"name": "variable",
+"stack": "( -- )",
+"text": "Create a variable (one cell, initially 0). name then pushes its address.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+":",
+";",
+"constant",
+"create",
+"immediate"
+],
+"examples": [
+"variable x  5 x !  3 x +!  x ? 8  ok",
+"variable count",
+"variable presses"
+]
+},
+{
+"name": "constant",
+"stack": "( x -- )",
+"text": "Create a constant. name then pushes x.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+":",
+";",
+"variable",
+"create",
+"immediate"
+],
+"examples": [
+"10 constant ten"
+]
+},
+{
+"name": "create",
+"stack": "( -- )",
+"text": "Create a word that pushes the address of the data space following it; reserve that space with allot, , or c,.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+":",
+";",
+"variable",
+"constant",
+"immediate"
+],
+"examples": [
+"create table 1 , 2 , 4 , 8 ,",
+"create ftab 1e f, 2e f, 4e f,  ftab 2 floats + f@ f. 4.  ok",
+"create msg 104 c, 105 c,   \\ \"hi\""
+]
+},
+{
+"name": "immediate",
+"stack": "( -- )",
+"text": "Make the newest word immediate: it runs during compilation instead of being compiled.",
+"section": "5.18 Defining words",
+"area": "Defining words",
+"related": [
+":",
+";",
+"variable",
+"constant",
+"create"
+],
+"examples": [
+": shout .\" loud\" ; immediate"
+]
+},
+{
+"name": "if",
+"stack": "f if ... then",
+"text": "Run the code if f is true.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;",
+": find3 10 0 do i 3 = if .\" found\" unloop exit then loop .\" none\" ;",
+"begin btn0? if count-press then key? until key drop"
+]
+},
+{
+"name": "then",
+"stack": "f if ... then",
+"text": "Run the code if f is true.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+"0 1 us pg-wait   \\ 0: wait for BTN0, then 1 us low",
+"0 2 us 0 pg-jump   \\ 3: 2 us low, then wait again",
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;"
+]
+},
+{
+"name": "else",
+"stack": "f if ... else ... then",
+"text": "Choose between two branches.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": weight ( i -- ) ( F: -- w ) 1 and if 4e else 2e then ;"
+]
+},
+{
+"name": "begin",
+"stack": "begin ... f until",
+"text": "Repeat until f is true (runs at least once).",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;"
+]
+},
+{
+"name": "until",
+"stack": "begin ... f until",
+"text": "Repeat until f is true (runs at least once).",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+": mirror begin btn@ led! key? until key drop 0 led! ;",
+"begin 0 led-toggle 1 led-toggle 300 ms key? until key drop 0 led! ;"
+]
+},
+{
+"name": "while",
+"stack": "begin ... f while ... repeat",
+"text": "Repeat while f is true, test in the middle.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+"btn@ .   \\ hold BTN1 while pressing Enter: prints 2",
+": quiet shout ;  loud ok   \\ shout ran while quiet was compiled"
+]
+},
+{
+"name": "repeat",
+"stack": "begin ... f while ... repeat",
+"text": "Repeat while f is true, test in the middle.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"again",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": []
+},
+{
+"name": "again",
+"stack": "begin ... again",
+"text": "Repeat forever (leave with exit, or Ctrl-R from the terminal).",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"do",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+"0 2 us 0 pg-jump   \\ 3: 2 us low, then wait again",
+": worker begin receive dup * send again ;   \\ core 1"
+]
+},
+{
+"name": "do",
+"stack": "limit start do ... loop",
+"text": "Counted loop: the index runs from start to limit − 1.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"loop",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": evens 10 0 do i . 2 +loop ;"
+]
+},
+{
+"name": "loop",
+"stack": "limit start do ... loop",
+"text": "Counted loop: the index runs from start to limit − 1.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"+loop",
+"exit",
+"recurse"
+],
+"examples": [
+": blink3 10 0 do 3 led-toggle 200 ms loop ;   \\ LD3 blinks 5 times, the others stay",
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": table 3 1 do 3 1 do j i * . loop loop ;"
+]
+},
+{
+"name": "+loop",
+"stack": "limit start do ... n +loop",
+"text": "Like loop, but adds n to the index; ends when the index is ≥ limit. Counts upward only.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"exit",
+"recurse"
+],
+"examples": [
+": evens 10 0 do i . 2 +loop ;"
+]
+},
+{
+"name": "exit",
+"stack": "exit",
+"text": "Return from the current word immediately.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"recurse"
+],
+"examples": [
+": find3 10 0 do i 3 = if .\" found\" unloop exit then loop .\" none\" ;"
+]
+},
+{
+"name": "recurse",
+"stack": "recurse",
+"text": "Call the word being defined.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"if",
+"then",
+"else",
+"begin",
+"until",
+"while",
+"repeat",
+"again",
+"do",
+"loop",
+"+loop",
+"exit"
+],
+"examples": [
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;"
+]
+},
+{
+"name": "i",
+"stack": "( -- n )",
+"text": "Index of the innermost loop.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"j",
+"unloop"
+],
+"examples": [
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": evens 10 0 do i . 2 +loop ;",
+": table 3 1 do 3 1 do j i * . loop loop ;"
+]
+},
+{
+"name": "j",
+"stack": "( -- n )",
+"text": "Index of the next outer loop (in the same definition).",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"i",
+"unloop"
+],
+"examples": [
+": table 3 1 do 3 1 do j i * . loop loop ;"
+]
+},
+{
+"name": "unloop",
+"stack": "( -- )",
+"text": "Remove the loop parameters from the return stack. Required before exit inside a loop.",
+"section": "5.19 Control structures",
+"area": "Control structures",
+"related": [
+"i",
+"j"
+],
+"examples": [
+": find3 10 0 do i 3 = if .\" found\" unloop exit then loop .\" none\" ;"
+]
+},
+{
+"name": "'",
+"stack": "( -- xt )",
+"text": "Execution token of name; 0 if not found (standard Forth signals an error).",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"[']",
+"execute",
+"[",
+"]",
+"literal",
+"compile,",
+"state"
+],
+"examples": [
+"' five execute . 5  ok",
+"0e pi ' fsin 100 simpson f.   \\ prints 2.",
+"0e 3e ' gauss 100 simpson f.   \\ prints 0.886207"
+]
+},
+{
+"name": "[']",
+"stack": "( -- )",
+"text": "Compile only: compile name's xt as a literal.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"execute",
+"[",
+"]",
+"literal",
+"compile,",
+"state"
+],
+"examples": []
+},
+{
+"name": "execute",
+"stack": "( xt -- )",
+"text": "Run the word with this execution token. 0 execute restarts Forth through cold.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"[",
+"]",
+"literal",
+"compile,",
+"state"
+],
+"examples": [
+"' five execute . 5  ok",
+": f(i) ( i -- ) ( F: -- y ) x(i) fn @ execute ;"
+]
+},
+{
+"name": "[",
+"stack": "( -- )",
+"text": "Switch to interpreting inside a definition (immediate).",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"execute",
+"]",
+"literal",
+"compile,",
+"state"
+],
+"examples": [
+": rt2 [ 2e fsqrt ] fliteral ;  rt2 f. 1.414214  ok",
+": five [ 2 3 + ] literal ;  ok"
+]
+},
+{
+"name": "]",
+"stack": "( -- )",
+"text": "Switch back to compiling.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"execute",
+"[",
+"literal",
+"compile,",
+"state"
+],
+"examples": [
+": rt2 [ 2e fsqrt ] fliteral ;  rt2 f. 1.414214  ok",
+": five [ 2 3 + ] literal ;  ok"
+]
+},
+{
+"name": "literal",
+"stack": "( x -- )",
+"text": "Compile x as a number (immediate). Use it with [ and ] to compute values at compile time.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"execute",
+"[",
+"]",
+"compile,",
+"state"
+],
+"examples": [
+": five [ 2 3 + ] literal ;  ok"
+]
+},
+{
+"name": "compile,",
+"stack": "( xt -- )",
+"text": "Compile a call to xt.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"execute",
+"[",
+"]",
+"literal",
+"state"
+],
+"examples": []
+},
+{
+"name": "state",
+"stack": "( -- a )",
+"text": "Variable: −1 while compiling, 0 while interpreting.",
+"section": "5.20 Compiler and execution",
+"area": "Compiler and execution",
+"related": [
+"'",
+"[']",
+"execute",
+"[",
+"]",
+"literal",
+"compile,"
+],
+"examples": []
+},
+{
+"name": "(",
+"stack": "",
+"text": "Ignore everything up to the closing ). Commonly used for stack comments.",
+"section": "5.21 Comments",
+"area": "Comments",
+"related": [
+"\\"
+],
+"examples": [
+": run-time ( -- ms ) ms@ pg-start begin pg-status 4 and until ms@ swap - ;",
+": scale ( -- ) 8 0 do 300 261.63e i s>f 12e f/ 2e fswap f** f* beep loop ;",
+": fact ( n -- n! ) dup 1 > if dup 1- recurse * then ;"
+]
+},
+{
+"name": "\\",
+"stack": "",
+"text": "Ignore the rest of the line.",
+"section": "5.21 Comments",
+"area": "Comments",
+"related": [
+"("
+],
+"examples": [
+"5 led!   \\ LD0 and LD2 on",
+"1 led-on   \\ LD1 on as well: LD0, LD1 and LD2 are lit",
+"0 led-off   \\ LD0 off: LD1 and LD2 stay"
+]
+},
+{
+"name": "words",
+"stack": "( -- )",
+"text": "List all words, newest first (internal words included).",
+"section": "5.22 Interpreter and system",
+"area": "Interpreter and system",
+"related": [
+"quit",
+"abort",
+"cold"
+],
+"examples": []
+},
+{
+"name": "quit",
+"stack": "( -- )",
+"text": "Return to the interpreter loop (the data stack is kept).",
+"section": "5.22 Interpreter and system",
+"area": "Interpreter and system",
+"related": [
+"words",
+"abort",
+"cold"
+],
+"examples": []
+},
+{
+"name": "abort",
+"stack": "( -- )",
+"text": "Clear the data stack and the float stack and return to the interpreter loop.",
+"section": "5.22 Interpreter and system",
+"area": "Interpreter and system",
+"related": [
+"words",
+"quit",
+"cold"
+],
+"examples": []
+},
+{
+"name": "cold",
+"stack": "( -- )",
+"text": "Restart: decimal base, precision 7, banner, LD0 on, interpreter loop. Your definitions stay.",
+"section": "5.22 Interpreter and system",
+"area": "Interpreter and system",
+"related": [
+"words",
+"quit",
+"abort"
+],
+"examples": []
+},
+{
+"name": "dp",
+"stack": "",
+"text": "Dictionary pointer: the value here returns.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "latest",
+"stack": "",
+"text": "Header address of the newest word.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "tib",
+"stack": "",
+"text": "Terminal input buffer (84 bytes).",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "#tib",
+"stack": "",
+"text": "Number of characters in the current input line.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": ">in",
+"stack": "",
+"text": "Parse position in tib.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "'a",
+"stack": "",
+"text": "Address and length of the name being searched by find-name.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'n",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "'n",
+"stack": "",
+"text": "Address and length of the name being searched by find-name.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"sbuf",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "sbuf",
+"stack": "",
+"text": "Buffer (32 cells) and count used by .s and f.s.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sn",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "sn",
+"stack": "",
+"text": "Buffer (32 cells) and count used by .s and f.s.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"ssnap",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "ssnap",
+"stack": "",
+"text": "The copy of the data stack snap makes before each line (20 cells, bottom first) and its depth, -1 while copying; the ARM reads them for the app.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"sdepth"
+],
+"examples": []
+},
+{
+"name": "sdepth",
+"stack": "",
+"text": "The copy of the data stack snap makes before each line (20 cells, bottom first) and its depth, -1 while copying; the ARM reads them for the app.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "fssnap",
+"stack": "",
+"text": "The same for the float stack (20 floats, bottom first).",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "fsdepth",
+"stack": "",
+"text": "The same for the float stack (20 floats, bottom first).",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fprec)",
+"stack": "",
+"text": "The digits precision returns (section 5.15).",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fbuf)",
+"stack": "",
+"text": "The digits f., fs. and fe. get from represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fm)",
+"stack": "",
+"text": "Digits, exponent and sign of the number >float is reading.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fx)",
+"stack": "",
+"text": "Digits, exponent and sign of the number >float is reading.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fe)",
+"stack": "",
+"text": "Digits, exponent and sign of the number >float is reading.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fany)",
+"stack": "",
+"text": "Digits, exponent and sign of the number >float is reading.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fneg)",
+"stack": "",
+"text": "Digits, exponent and sign of the number >float is reading.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(rep-a)",
+"stack": "",
+"text": "Buffer, digit count and decimal exponent of represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(rep-u)",
+"stack": "",
+"text": "Buffer, digit count and decimal exponent of represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(rk)",
+"stack": "",
+"text": "Buffer, digit count and decimal exponent of represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(rkk)",
+"stack": "",
+"text": "Buffer, digit count and decimal exponent of represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(rx)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(tl)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(ta)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(ah)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(al)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(bh)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(bl)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(tp)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(te)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(td)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(tq)",
+"stack": "",
+"text": "Intermediate results of the exact decimal scaling used by >float and represent.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fz)",
+"stack": "",
+"text": "Intermediate results of the elementary functions.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fk)",
+"stack": "",
+"text": "Intermediate results of the elementary functions.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(fy0)",
+"stack": "",
+"text": "Intermediate results of the elementary functions.",
+"section": "5.23 Variables used by the system",
+"area": "Variables used by the system",
+"related": [
+"dp",
+"latest",
+"state",
+"base",
+"tib",
+"#tib",
+">in",
+"'a",
+"'n",
+"sbuf",
+"sn",
+"ssnap"
+],
+"examples": []
+},
+{
+"name": "(loop)",
+"stack": "( -- f )",
+"text": "Increment the loop index; true when it reached the limit.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(+loop)",
+"(.\")",
+"(u.)",
+"digit"
+],
+"examples": []
+},
+{
+"name": "(+loop)",
+"stack": "( n -- f )",
+"text": "Add n to the loop index; true when it is ≥ the limit.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(loop)",
+"(.\")",
+"(u.)",
+"digit"
+],
+"examples": []
+},
+{
+"name": "(.\")",
+"stack": "( -- )",
+"text": "Print the counted string stored after the call and continue behind it.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(loop)",
+"(+loop)",
+"(u.)",
+"digit"
+],
+"examples": []
+},
+{
+"name": "(u.)",
+"stack": "( u -- )",
+"text": "Print u without a trailing space.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(loop)",
+"(+loop)",
+"(.\")",
+"digit"
+],
+"examples": []
+},
+{
+"name": "digit",
+"stack": "( u -- c )",
+"text": "Convert 0..35 to the character 0..9, A..Z.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(loop)",
+"(+loop)",
+"(.\")",
+"(u.)"
+],
+"examples": []
+},
+{
+"name": "parse-name",
+"stack": "( -- a u )",
+"text": "Skip spaces, return the next space-delimited word (u = 0 at end of line).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse",
+"more?",
+"in-char",
+"/string",
+"upper"
+],
+"examples": []
+},
+{
+"name": "parse",
+"stack": "( c -- a u )",
+"text": "Return the text up to character c and skip past c.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse-name",
+"more?",
+"in-char",
+"/string",
+"upper"
+],
+"examples": []
+},
+{
+"name": "more?",
+"stack": "( -- f )",
+"text": "True if unparsed characters remain on the line.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse-name",
+"parse",
+"in-char",
+"/string",
+"upper"
+],
+"examples": []
+},
+{
+"name": "in-char",
+"stack": "( -- c )",
+"text": "The character at the parse position.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse-name",
+"parse",
+"more?",
+"/string",
+"upper"
+],
+"examples": []
+},
+{
+"name": "/string",
+"stack": "( a u n -- a+n u-n )",
+"text": "Remove n characters from the front of a string.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse-name",
+"parse",
+"more?",
+"in-char",
+"upper"
+],
+"examples": []
+},
+{
+"name": "upper",
+"stack": "( c -- c' )",
+"text": "Convert a lower-case letter to upper case.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"parse-name",
+"parse",
+"more?",
+"in-char",
+"/string"
+],
+"examples": []
+},
+{
+"name": "find-name",
+"stack": "( a u -- h | 0 )",
+"text": "Find a visible word by name (case-insensitive), newest first.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"match?",
+"same?",
+"name>count",
+"name>xt"
+],
+"examples": []
+},
+{
+"name": "match?",
+"stack": "( h -- f )",
+"text": "True if header h is visible and matches the name in 'a/'n.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"find-name",
+"same?",
+"name>count",
+"name>xt"
+],
+"examples": []
+},
+{
+"name": "same?",
+"stack": "( a1 a2 u -- f )",
+"text": "Compare two strings of length u, case-insensitive.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"find-name",
+"match?",
+"name>count",
+"name>xt"
+],
+"examples": []
+},
+{
+"name": "name>count",
+"stack": "( h -- a u )",
+"text": "Name string of a header.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"find-name",
+"match?",
+"same?",
+"name>xt"
+],
+"examples": []
+},
+{
+"name": "name>xt",
+"stack": "( h -- xt )",
+"text": "Execution token of a header.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"find-name",
+"match?",
+"same?",
+"name>count"
+],
+"examples": []
+},
+{
+"name": "number?",
+"stack": "( a u -- n f )",
+"text": "Convert a string with optional - and $ prefix; f is true on success.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+">number",
+"digit?",
+"float?"
+],
+"examples": []
+},
+{
+"name": ">number",
+"stack": "( u1 a1 n1 -- u2 a2 n2 )",
+"text": "Accumulate digits into u1 until a non-digit; returns the rest of the string.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"number?",
+"digit?",
+"float?"
+],
+"examples": []
+},
+{
+"name": "digit?",
+"stack": "( c -- n f )",
+"text": "Value of a digit character and whether it is valid in base.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"number?",
+">number",
+"float?"
+],
+"examples": []
+},
+{
+"name": "float?",
+"stack": "( a u -- f ) ( F: -- r | )",
+"text": "Like >float, but only while base is 10; the interpreter's float literals.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"number?",
+">number",
+"digit?"
+],
+"examples": []
+},
+{
+"name": "(inf)",
+"stack": "( F: -- r )",
+"text": "Positive infinity; the NaN $7FC00000.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(nan)",
+"stack": "( F: -- r )",
+"text": "Positive infinity; the NaN $7FC00000.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "fnan?",
+"stack": "( F: r -- r ) ( -- f )",
+"text": "True if r is a NaN; r stays.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "finf?",
+"stack": "( F: r -- r ) ( -- f )",
+"text": "True if r is an infinity; r stays.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "tens",
+"stack": "( -- a )",
+"text": "A table of the floats 10^0..10^10, all exact.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "10^",
+"stack": "( n -- ) ( F: -- r )",
+"text": "10^n from tens, for 0 ≤ n ≤ 10.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "2^n",
+"stack": "( n -- ) ( F: -- r )",
+"text": "2^n for −126 ≤ n ≤ 127, built from its bits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(split)",
+"stack": "( F: a b -- p err )",
+"text": "(2prod) gives a × b as the rounded product p plus its exact error err (Dekker's method); (split) splits a float into two halves for it.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(2prod)",
+"stack": "( F: a b -- p err )",
+"text": "(2prod) gives a × b as the rounded product p plus its exact error err (Dekker's method); (split) splits a float into two halves for it.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(fdiv10^)",
+"stack": "",
+"text": "Divide, multiply or scale the number held exactly as (rx) + (tl) by a power of ten.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fmul10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(fmul10^)",
+"stack": "",
+"text": "Divide, multiply or scale the number held exactly as (rx) + (tl) by a power of ten.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(scaled)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(scaled)",
+"stack": "",
+"text": "Divide, multiply or scale the number held exactly as (rx) + (tl) by a power of ten.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(fdigit)"
+],
+"examples": []
+},
+{
+"name": "(fdigit)",
+"stack": "",
+"text": "The steps of >float: take a digit, test for digits, read the exponent, build the float from digits and exponent.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(digits?)",
+"stack": "",
+"text": "The steps of >float: take a digit, test for digits, read the exponent, build the float from digits and exponent.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(fexp)",
+"stack": "",
+"text": "The steps of >float: take a digit, test for digits, read the exponent, build the float from digits and exponent.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(fbuild)",
+"stack": "",
+"text": "The steps of >float: take a digit, test for digits, read the exponent, build the float from digits and exponent.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(decade)",
+"stack": "",
+"text": "The steps of represent: estimate the decimal exponent, round p + err to an integer, find the digits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(updecade)",
+"stack": "",
+"text": "The steps of represent: estimate the decimal exponent, round p + err to an integer, find the digits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(round2)",
+"stack": "",
+"text": "The steps of represent: estimate the decimal exponent, round p + err to an integer, find the digits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(ipow)",
+"stack": "",
+"text": "The steps of represent: estimate the decimal exponent, round p + err to an integer, find the digits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(digits)",
+"stack": "",
+"text": "The steps of represent: estimate the decimal exponent, round p + err to an integer, find the digits.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(fspecial)",
+"stack": "",
+"text": "The steps of f., fs. and fe.: print NaN and the infinities, count the significant digits, print in fixed notation, print the exponent (in decimal).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(fsig)",
+"stack": "",
+"text": "The steps of f., fs. and fe.: print NaN and the infinities, count the significant digits, print in fixed notation, print the exponent (in decimal).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(fixed)",
+"stack": "",
+"text": "The steps of f., fs. and fe.: print NaN and the infinities, count the significant digits, print in fixed notation, print the exponent (in decimal).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(.exp)",
+"stack": "",
+"text": "The steps of f., fs. and fe.: print NaN and the infinities, count the significant digits, print in fixed notation, print the exponent (in decimal).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(reduce)",
+"stack": "",
+"text": "Reduce an angle to −π/4..π/4 and its quadrant; the sine and cosine polynomials.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(sin)",
+"stack": "",
+"text": "Reduce an angle to −π/4..π/4 and its quadrant; the sine and cosine polynomials.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(cos)",
+"stack": "",
+"text": "Reduce an angle to −π/4..π/4 and its quadrant; the sine and cosine polynomials.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(f2^n)",
+"stack": "( n -- ) ( F: r -- r' )",
+"text": "r × 2^n, for the result of fexp.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(f**)",
+"stack": "( F: r1 r2 -- r3 )",
+"text": "e^(r2 × ln r1), the core of f.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(inf)",
+"(nan)",
+"fnan?",
+"finf?",
+"tens",
+"10^",
+"2^n",
+"(split)",
+"(2prod)",
+"(fdiv10^)",
+"(fmul10^)",
+"(scaled)"
+],
+"examples": []
+},
+{
+"name": "(pg)",
+"stack": "( levels d op count -- )",
+"text": "Store one pattern step; the common part of pg-step, pg-loop, pg-jump, pg-wait and pg-end.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"d2*",
+"(dur)"
+],
+"examples": []
+},
+{
+"name": "d2*",
+"stack": "( d -- d' )",
+"text": "Double a double number.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(pg)",
+"(dur)"
+],
+"examples": []
+},
+{
+"name": "(dur)",
+"stack": "( d -- d )",
+"text": "\"too long\" unless the high cell is 0: the check of us and msec.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"(pg)",
+"d2*"
+],
+"examples": []
+},
+{
+"name": "header",
+"stack": "( a u -- )",
+"text": "Lay down a header with this name and make it latest.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"flags!",
+"hide",
+"reveal",
+"compile-call",
+"inline,",
+">resolve"
+],
+"examples": []
+},
+{
+"name": "flags!",
+"stack": "( mask -- )",
+"text": "OR mask into the count byte of latest.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"hide",
+"reveal",
+"compile-call",
+"inline,",
+">resolve"
+],
+"examples": []
+},
+{
+"name": "hide",
+"stack": "( -- )",
+"text": "Mark latest hidden (used by :).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"flags!",
+"reveal",
+"compile-call",
+"inline,",
+">resolve"
+],
+"examples": []
+},
+{
+"name": "reveal",
+"stack": "( -- )",
+"text": "Clear the hidden flag of latest (used by ;).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"flags!",
+"hide",
+"compile-call",
+"inline,",
+">resolve"
+],
+"examples": []
+},
+{
+"name": "compile-call",
+"stack": "( xt -- )",
+"text": "Compile a call instruction to xt.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"flags!",
+"hide",
+"reveal",
+"inline,",
+">resolve"
+],
+"examples": []
+},
+{
+"name": "inline,",
+"stack": "( xt -- )",
+"text": "Copy xt's instructions up to its return into the definition.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"flags!",
+"hide",
+"reveal",
+"compile-call",
+">resolve"
+],
+"examples": []
+},
+{
+"name": ">resolve",
+"stack": "( a -- )",
+"text": "Patch the jump at a to point to here (used by then, else, repeat).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"header",
+"flags!",
+"hide",
+"reveal",
+"compile-call",
+"inline,"
+],
+"examples": []
+},
+{
+"name": "snap",
+"stack": "( -- )",
+"text": "Copy the data stack into ssnap and the float stack into fssnap, and their depths into sdepth and fsdepth, leaving the stacks as they were; quit runs it before each line, for the app's stack views (section 2.7).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"accept-line",
+"interpret",
+"interpret-word",
+"?stack"
+],
+"examples": []
+},
+{
+"name": "accept-line",
+"stack": "( -- )",
+"text": "Read one line from the terminal into tib, with echo and backspace.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"snap",
+"interpret",
+"interpret-word",
+"?stack"
+],
+"examples": []
+},
+{
+"name": "interpret",
+"stack": "( -- )",
+"text": "Interpret or compile the rest of the line.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"snap",
+"accept-line",
+"interpret-word",
+"?stack"
+],
+"examples": []
+},
+{
+"name": "interpret-word",
+"stack": "( a u -- )",
+"text": "Handle one word: execute, compile, inline, or convert as an integer or a float.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"snap",
+"accept-line",
+"interpret",
+"?stack"
+],
+"examples": []
+},
+{
+"name": "?stack",
+"stack": "( -- )",
+"text": "Check both stacks for underflow or overflow (section 3.4).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"snap",
+"accept-line",
+"interpret",
+"interpret-word"
+],
+"examples": []
+},
+{
+"name": "uart",
+"stack": "( u -- a )",
+"text": "The registers of UART u ($100200 + 16 * u); \"bad uart\" for other numbers than 0 and 1.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "spi",
+"stack": "( s -- a )",
+"text": "The registers of SPI master s ($100220 + 32 * s); \"bad spi\" for other numbers than 0 and 1.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(owner)",
+"stack": "( pin -- a )",
+"text": "The pin's owner register ($100300 + 4 * pin, section 5.16, *Pin owners*).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(mine)",
+"stack": "( pin -- pin )",
+"text": "\"pin taken\" if the other core owns the pin.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(free)",
+"stack": "( pin id -- pin )",
+"text": "\"pin taken\" unless the pin is free, an output pin of this core, or owned by id.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "claim",
+"stack": "( pin id -- )",
+"text": "Make id the owner of the pin (\"pin taken\" if the other core got it first).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(claim)",
+"stack": "( pin id -- pin )",
+"text": "claim, keeping the pin.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "release",
+"stack": "( id -- )",
+"text": "Free every pin id owns.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"cid",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "cid",
+"stack": "( -- a )",
+"text": "The owner id while spi-open claims its pins.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"unit",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "unit",
+"stack": "( u -- a )",
+"text": "The owner register of peripheral u (section 5.16, *Peripheral owners*).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"(unit)",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(unit)",
+"stack": "( u -- )",
+"text": "Take peripheral u for this core; \"in use by the other core\" if the other core has it.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"unit-free",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "unit-free",
+"stack": "( u -- )",
+"text": "Let peripheral u go.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"(i2c)"
+],
+"examples": []
+},
+{
+"name": "(i2c)",
+"stack": "( cmd -- status )",
+"text": "Give the I2C master a command and wait until it is done; \"i2c timeout\" when a slave held SCL low too long.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(i2c-free)",
+"stack": "( -- )",
+"text": "The bus recovery of i2c-open-pins: 9 clocks on SCL with SDA released, then a stop, with the pins as GPIO before the master takes them.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(i2c-line)",
+"stack": "( f pin -- )",
+"text": "Release (true) or pull low (false) an I2C line as GPIO, then wait 10 µs.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(i2c-wait)",
+"stack": "( -- )",
+"text": "Wait 10 µs.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(i2c-scl)",
+"stack": "( -- a )",
+"text": "The pins i2c-open-pins was given.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(i2c-sda)",
+"stack": "( -- a )",
+"text": "The pins i2c-open-pins was given.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "(ack?)",
+"stack": "( f -- )",
+"text": "\"no ack\" (after a stop) if f is false.",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "dds-sync",
+"stack": "( -- )",
+"text": "Wait until the DDS took over the last change (it runs on its own clock).",
+"section": "5.24 Internal words",
+"area": "Internal words",
+"related": [
+"uart",
+"spi",
+"(owner)",
+"(mine)",
+"(free)",
+"claim",
+"(claim)",
+"release",
+"cid",
+"unit",
+"(unit)",
+"unit-free"
+],
+"examples": []
+},
+{
+"name": "core#",
+"stack": "( -- n )",
+"text": "The number of this core: 0 or 1 (0 on the single-core firmware).",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"send",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": [
+": hello .\" core \" core# . .\" here\" cr ;"
+]
+},
+{
+"name": "send",
+"stack": "( x -- )",
+"text": "Send x to the other core; waits while its mailbox is full.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": [
+": worker begin receive dup * send again ;   \\ core 1",
+": ask ( n -- n*n ) send receive ;   \\ core 0"
+]
+},
+{
+"name": "receive",
+"stack": "( -- x )",
+"text": "The oldest cell the other core sent; waits until there is one.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": [
+": worker begin receive dup * send again ;   \\ core 1",
+": ask ( n -- n*n ) send receive ;   \\ core 0"
+]
+},
+{
+"name": "mail?",
+"stack": "( -- f )",
+"text": "True if a cell is waiting for this core.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": []
+},
+{
+"name": "lock",
+"stack": "( n -- )",
+"text": "Take lock n (0..7), waiting while the other core holds it. \"bad lock\" for other numbers.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"try-lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": [
+": bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;   \\ on both cores"
+]
+},
+{
+"name": "try-lock",
+"stack": "( n -- f )",
+"text": "Take lock n if it is free or already this core's: true; false if the other core holds it.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"lock",
+"unlock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": []
+},
+{
+"name": "unlock",
+"stack": "( n -- )",
+"text": "Release lock n, if this core holds it.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"shared",
+"/shared",
+"(lock)"
+],
+"examples": [
+": bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;   \\ on both cores"
+]
+},
+{
+"name": "shared",
+"stack": "( -- a )",
+"text": "Address of the shared memory ($101000).",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"/shared",
+"(lock)"
+],
+"examples": [
+": bump 1000 0 do 0 lock shared @ 1+ shared ! 0 unlock loop ;   \\ on both cores",
+"0 shared !   \\ core 0, before",
+"shared @ .   \\ after both: 2000"
+]
+},
+{
+"name": "/shared",
+"stack": "( -- n )",
+"text": "Its size in bytes: 4096.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"(lock)"
+],
+"examples": []
+},
+{
+"name": "(lock)",
+"stack": "( n -- a )",
+"text": "The register of lock n: reads 0 free, 1 this core's, 2 the other's.",
+"section": "5.25 Two cores",
+"area": "Two cores",
+"related": [
+"core#",
+"send",
+"receive",
+"mail?",
+"lock",
+"try-lock",
+"unlock",
+"shared",
+"/shared"
+],
+"examples": []
+},
+{
+"name": "owner",
+"stack": "( pin -- id )",
+"text": "Pin owners. owner ( pin -- id ) shows who owns a pin: 0 nobody (the pin is GPIO), 1..4 PWM channels 0..3, 5 UART 0, 6 UART 1, 7 SPI 0, 8 SPI 1, 9 I2C, 10 the DDS, 15 an output pin;",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": []
+},
+{
+"name": "pin-miso",
+"stack": "",
+"text": "The SPI header's pins are pin-sck, pin-mosi, pin-miso and pin-ss.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": [
+"pin-sck pin-mosi pin-miso 0 spi-open  1000000 0 spi-hz"
+]
+},
+{
+"name": "pin-mosi",
+"stack": "",
+"text": "The SPI header's pins are pin-sck, pin-mosi, pin-miso and pin-ss.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": [
+"pin-sck pin-mosi pin-miso 0 spi-open  1000000 0 spi-hz"
+]
+},
+{
+"name": "pin-sck",
+"stack": "",
+"text": "The SPI header's pins are pin-sck, pin-mosi, pin-miso and pin-ss.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": [
+"pin-sck pin-mosi pin-miso 0 spi-open  1000000 0 spi-hz"
+]
+},
+{
+"name": "pin-scl",
+"stack": "",
+"text": "The shield's SCL and SDA pins (pin-scl, pin-sda) have pull-up resistors on the board and are the default;",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": []
+},
+{
+"name": "pin-sda",
+"stack": "",
+"text": "The shield's SCL and SDA pins (pin-scl, pin-sda) have pull-up resistors on the board and are the default;",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": []
+},
+{
+"name": "pin-ss",
+"stack": "",
+"text": "The SPI header's pins are pin-sck, pin-mosi, pin-miso and pin-ss.",
+"section": "5.16 Serial interfaces",
+"area": "Serial interfaces",
+"related": [],
+"examples": [
+"pin-ss output pin-ss high   \\ the chip select, idle high",
+"pin-ss low $9F 0 spi-xfer drop 0 0 spi-xfer . pin-ss high   \\ e.g. a flash's ID"
+]
+}
+]

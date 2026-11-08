@@ -50,6 +50,10 @@ if (-not $SkipPdf) {
     if ($LASTEXITCODE) { throw 'design PDF failed' }
 }
 
+# the word help the app embeds, from the manual's word reference; fails on an undescribed kernel word
+python (Join-Path $root 'tools\make_word_help.py')
+if ($LASTEXITCODE) { throw 'word help failed (a kernel word without a description?)' }
+
 $solution = Join-Path $root 'app\ZynqForth.slnx'
 if (-not $SkipTests) {
     dotnet test $solution -c Release

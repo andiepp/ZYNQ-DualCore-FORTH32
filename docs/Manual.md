@@ -47,6 +47,7 @@ Contents:
   - [2.9 The board view](#29-the-board-view)
   - [2.10 A worked session](#210-a-worked-session)
   - [2.11 Two cores](#211-two-cores)
+  - [2.12 Help: every word, searchable](#212-help-every-word-searchable)
 - **[3. Working with the interpreter](#3-working-with-the-interpreter)**
   - [3.1 Input line](#31-input-line)
   - [3.2 Words and numbers](#32-words-and-numbers)
@@ -505,6 +506,34 @@ the connection (Ctrl+1 and Ctrl+2) chooses the core the app shows:
 - The status line at the bottom shows both cores' state and how often each was started.
 
 A terminal program on the serial port sees core 0 only, as with the single-core firmware.
+
+### 2.12 Help: every word, searchable
+
+**Help** (beside **Manual**, or **F2**) opens a window with help on every Forth word of the
+kernel. It stays open beside the app while you edit and type, and needs no board. Both cores
+run the same kernel, so the help is the same for both.
+
+![The Help window: a search for mailbox finds send](images/app-help.png)
+
+- **Find** searches the words' names, stack effects and descriptions. Several terms must all
+  appear: `uart baud` finds `uart-open`, `mailbox` finds `send`. Names come first (the exact
+  name, then names that start with the term), then matches in stack effects and
+  descriptions; the kernel's internal words come after the ones meant for use. **Up**/**Down**
+  move through the list.
+- The list beside **Find** limits the words to one section of chapter 5 (Data stack,
+  Floating point, Serial interfaces, Two cores, …).
+- The right side shows the selected word: its stack effect, the manual section it comes from,
+  the description, **related** words (the same table of the manual, click to go there) and
+  **examples** from the manual's code.
+- **F2** in the editor or the terminal's input line opens the help on the word at the cursor.
+  A word you defined yourself has no help; the status line says so, and the Dictionary
+  lists it (section 2.7).
+- **Insert** (or Enter, or a double-click) adds the word to the input line of the core that is
+  shown; **Copy** puts the word and its help on the clipboard. **Keep on top** keeps the
+  window above other programs too. The window remembers its place and size.
+
+The help is taken from this manual's word reference (chapter 5) when the app is built
+(`tools/make_word_help.py`), so it says what the manual says.
 
 ---
 
@@ -1678,6 +1707,7 @@ straight 2 ms ramp, so tones start and stop without clicks.
 | `tone` | `( F: hz -- )` | Play the frequency: `440e tone`. Can change while it plays. |
 | `tone-off` | `( -- )` | Stop (the volume ramps down in 2 ms). |
 | `wave` | `( n -- )` | The waveform: `sine` (0, after start-up), `square`, `triangle` or `sawtooth`. |
+| `sine`, `square`, `triangle`, `sawtooth` | `( -- n )` | The waveforms for `wave`: 0, 1, 2 and 3. |
 | `volume` | `( percent -- )` | 0..100, 50 after start-up. |
 | `beep` | `( ms -- ) ( F: hz -- )` | A tone for ms milliseconds: `200 880e beep`. |
 
@@ -1890,6 +1920,7 @@ These words are visible in `words` and can be used, but they mainly exist for th
 |---|---|---|
 | `(pg)` | `( levels d op count -- )` | Store one pattern step; the common part of `pg-step`, `pg-loop`, `pg-jump`, `pg-wait` and `pg-end`. |
 | `d2*` | `( d -- d' )` | Double a double number. |
+| `(dur)` | `( d -- d )` | ` too long` unless the high cell is 0: the check of `us` and `msec`. |
 
 **Compiler:**
 
@@ -1919,6 +1950,8 @@ These words are visible in `words` and can be used, but they mainly exist for th
 
 | Word | Stack | Description |
 |---|---|---|
+| `uart` | `( u -- a )` | The registers of UART u (`$100200 + 16 * u`); ` bad uart` for other numbers than 0 and 1. |
+| `spi` | `( s -- a )` | The registers of SPI master s (`$100220 + 32 * s`); ` bad spi` for other numbers than 0 and 1. |
 | `(owner)` | `( pin -- a )` | The pin's owner register (`$100300 + 4 * pin`, section 5.16, *Pin owners*). |
 | `(mine)` | `( pin -- pin )` | ` pin taken` if the other core owns the pin. |
 | `(free)` | `( pin id -- pin )` | ` pin taken` unless the pin is free, an output pin of this core, or owned by id. |

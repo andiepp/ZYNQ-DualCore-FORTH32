@@ -16,6 +16,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- the word help the app embeds (tools/make_word_help.py writes it) -->
+  <ItemGroup>
+    <None Include="..\..\src\ZynqForth\Help\words.json" Link="Help\words.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\ZynqForth.Core\ZynqForth.Core.csproj" />
   </ItemGroup>

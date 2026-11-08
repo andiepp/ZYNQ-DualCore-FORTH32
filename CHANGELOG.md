@@ -3,6 +3,19 @@
 ZYNQ-DualCore-FORTH32 starts from ZYNQ-FPGA-FORTH32 3.1 (its commit 178f766) and continues its
 version numbers as 4.x. The entries from 3.1 down are ZYNQ-FPGA-FORTH32's.
 
+## Unreleased
+
+- **Help** in the app: a window with every Forth word of the kernel (439 entries), opened
+  with the Help button beside Manual or F2 (on the word at the cursor in the editor or the
+  input line). It stays open while you work; the search covers names, stack effects and
+  descriptions; an area list limits it to one section; each word shows its stack effect,
+  description, manual section, related words and examples. Insert (into the shown core's
+  input line), Copy, Keep on top.
+- The help is taken from the manual's word reference when the app is built
+  (`tools/make_word_help.py`, which also checks that every kernel word is described).
+- Manual: section 2.12 (Help); the word reference now also describes `uart`, `spi`, `(dur)`
+  and the waveform constants `sine square triangle sawtooth`. Firmware unchanged (4.2).
+
 ## 4.2 — 2026-11-06
 
 - **One LED at a time:** `led-on`, `led-off` and `led-toggle` ( n -- ) switch LED n (0..3,

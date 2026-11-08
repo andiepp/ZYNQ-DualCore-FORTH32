@@ -17,6 +17,8 @@
   <!-- the user manual, opened by the Manual button (tools/manual_pdf.py builds it) -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\..\docs\Manual.pdf" LogicalName="ZynqForth.Manual.pdf" />
+    <!-- the word help, from the manual's word reference (tools/make_word_help.py writes it) -->
+    <EmbeddedResource Include="Help\words.json" LogicalName="ZynqForth.WordHelp.json" />
   </ItemGroup>
 
 </Project>

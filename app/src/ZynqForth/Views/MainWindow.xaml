@@ -39,6 +39,8 @@
 
             <Button DockPanel.Dock="Right" Content="Manual" Click="Manual_Click" Margin="12,0,0,0"
                     ToolTip="Open the user manual (PDF): the app, the interpreter, every word, examples (F1)" />
+            <Button DockPanel.Dock="Right" Content="Help" Click="Help_Click" Margin="12,0,0,0"
+                    ToolTip="Help on every Forth word, searchable; stays open while you work (F2: the word at the cursor)" />
             <CheckBox DockPanel.Dock="Right" Content="Board" IsChecked="{Binding ShowBoard}" Margin="10,0,0,0"
                       ToolTip="Show the board: LEDs, buttons, switches, shield pins and analog inputs, live" />
             <ComboBox DockPanel.Dock="Right" Width="130" ItemsSource="{Binding SkinNames}" SelectedItem="{Binding SelectedSkin}" />

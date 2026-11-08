@@ -26,8 +26,9 @@ the board's flash, so it runs at every start without a PC.
 **IDE included.** The ZYNQ-DualCore-FORTH32 app for Windows switches between the two cores,
 each with its own source editor, terminal, data and float stack, dictionary and saved
 program. It also shows a live view of the board (LEDs, buttons, switches, pins, analog
-inputs) and edits patterns for the pattern generator as a timing diagram. F1 opens the full
-user manual.
+inputs) and edits patterns for the pattern generator as a timing diagram. **Help** (F2)
+describes every Forth word, with a search over names, stack effects and descriptions; F1
+opens the full user manual.
 
 Open source (MIT): RTL, Forth kernel, cross-compiler, simulator, ARM firmware and app, with a
 user manual and implementation details. It continues
@@ -74,7 +75,8 @@ core. How it was built, step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan
   carries over.
 - The **app**: a Core 0 / Core 1 switch (Ctrl+1 / Ctrl+2) with an editor, terminal, data and
   float stack, dictionary and saved source per core; a pattern editor (timing diagram) and a
-  live view of the board, shared; five skins: IDE dark, IDE light, Green phosphor, Amber and
+  live view of the board, shared; **Help** on every word (searchable, F2 on the word at the
+  cursor); five skins: IDE dark, IDE light, Green phosphor, Amber and
   Lab panel. The port **SIM** is a simulated two-core board for trying the app without one.
 
 | IDE dark | Green phosphor |
@@ -114,7 +116,8 @@ core. How it was built, step by step: [docs/DualCore-Plan.md](docs/DualCore-Plan
      (Ctrl+F5). **Core 0** / **Core 1** (Ctrl+1 / Ctrl+2) switch between the two Forths, each
      with its own terminal, editor, stacks, dictionary and saved source.
    - The app also shows the board live (LEDs, buttons, switches, pins, analog inputs) and
-     edits patterns for the pattern generator. **Manual** (F1) opens the user manual.
+     edits patterns for the pattern generator. **Help** (F2) describes every Forth word;
+     **Manual** (F1) opens the user manual.
    - Port **SIM** is a simulated board, for trying the app without one.
 
    Or use any **terminal program** (PuTTY, Tera Term) at **115200 8N1** on the same port: press

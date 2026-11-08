@@ -770,6 +770,9 @@ public sealed class MainViewModel : ObservableObject
         SetStatus($"The pattern is in {SelectedCore.Name}'s source editor as Forth: Run all loads it, Store editor saves it on the board.", false);
     }
 
+    /// <summary>A message in the status line, from the window (help).</summary>
+    public void ShowMessage(string text, bool error = false) => SetStatus(text, error);
+
     private void SetStatus(string message, bool error)
     {
         StatusText = message;
